@@ -12620,6 +12620,48 @@ function renderFamilyPage(){
 
   const bd = attr.birthday || { year:"?", month:"?", day:"?" };
 
+  // 家族树部分
+  let familyTreeHTML = '';
+  // 父母
+  if(petState.parents && petState.parents.length > 0){
+    familyTreeHTML += '<div style="font-size:14px;color:#888;margin-bottom:8px;">父母</div>';
+    petState.parents.forEach(p=>{
+      familyTreeHTML += '<div style="padding:6px 12px;background:rgba(255,220,240,0.5);border-radius:8px;margin-bottom:4px;">' +
+        (p.name || "未知") + ' · ' + (p.mask || "?") + ' · ' + (p.bodyType || "?") + '</div>';
+    });
+  }
+  // 伴侣
+  if(petState.partner){
+    const p = petState.partner;
+    familyTreeHTML += '<div style="font-size:14px;color:#888;margin:12px 0 8px;">伴侣</div>';
+    familyTreeHTML += '<div style="padding:8px 12px;background:rgba(255,200,230,0.6);border-radius:8px;margin-bottom:4px;border:1px solid rgba(255,150,200,0.3);">' +
+      '💕 ' + p.name + ' · ' + p.mask + ' · ' + p.bodyType + '<br>' +
+      '<span style="font-size:12px;color:#888;">对玩家好感：' + Math.round(p.playerAffinity) + ' · 对宠物好感：' + Math.round(p.petAffinity) + '</span>' +
+      '</div>';
+  }
+  // 孩子
+  if(petState.children && petState.children.length > 0){
+    familyTreeHTML += '<div style="font-size:14px;color:#888;margin:12px 0 8px;">孩子（' + petState.children.length + '个）</div>';
+    petState.children.forEach((c,i)=>{
+      const childAge = Math.floor((Date.now() - c.birthTime) / 86400000);
+      familyTreeHTML += '<div style="padding:6px 12px;background:rgba(220,240,255,0.5);border-radius:8px;margin-bottom:4px;">' +
+        '👶 ' + c.name + ' · ' + c.mask + ' · ' + c.bodyType + ' · 第' + c.generation + '代 · ' + childAge + '天' +
+        '</div>';
+    });
+  }
+  // 兄弟姐妹
+  if(petState.siblings && petState.siblings.length > 0){
+    familyTreeHTML += '<div style="font-size:14px;color:#888;margin:12px 0 8px;">兄弟姐妹</div>';
+    petState.siblings.forEach(s=>{
+      familyTreeHTML += '<div style="padding:6px 12px;background:rgba(240,240,255,0.5);border-radius:8px;margin-bottom:4px;">' +
+        (s.name || "未知") + ' · ' + (s.mask || "?") + '</div>';
+    });
+  }
+  if(familyTreeHTML){
+    familyTreeHTML = '<div style="background:rgba(255,255,255,0.85);padding:20px;border-radius:16px;border:1px solid rgba(255,180,220,0.4);margin-bottom:16px;">' +
+      '<div style="font-size:16px;color:#B080D0;margin-bottom:12px;">🌳 家族树</div>' + familyTreeHTML + '</div>';
+  }
+
   el.innerHTML = `
     <div style="background:rgba(255,255,255,0.85);padding:20px;border-radius:16px;border:1px solid rgba(255,180,220,0.4);margin-bottom:16px;">
       <div style="font-size:18px;color:#B080D0;margin-bottom:12px;">第 ${petState.generation} 代 · ${attr.givenName || petState.selfCall}</div>
@@ -12633,6 +12675,7 @@ function renderFamilyPage(){
       <div>身高：${attr.height || "?"} cm</div>
       <div>体重：${attr.weight || "?"} kg</div>
     </div>
+    ${familyTreeHTML}
     <div style="background:rgba(255,255,255,0.85);padding:20px;border-radius:16px;border:1px solid rgba(255,180,220,0.4);margin-bottom:16px;">
       <div style="font-size:16px;color:#B080D0;margin-bottom:12px;">性格五维</div>
       <div>脾气：${Math.round(t.脾气)}</div>
