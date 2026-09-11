@@ -7462,67 +7462,135 @@ function petAutoAction(type){
   }
 }
 
+/* ═══════════════ 成长过渡动画（仪式感） ═══════════════ */
+let growthTransition = {
+  active: false,
+  phase: 0,
+  startTime: 0,
+  targetStage: "",
+  petScale: 1
+};
+
+function triggerGrowthTransition(newStage){
+  if(growthTransition.active) return;
+  growthTransition.active = true;
+  growthTransition.phase = 0;
+  growthTransition.startTime = performance.now();
+  growthTransition.targetStage = newStage;
+  growthTransition.petScale = 1;
+
+  // 播放成长音效
+  try {
+    if(audioCtx && sfxGain){
+      playNote(523, 0.2, "sine", sfxGain, 0.3);
+      setTimeout(()=>playNote(659, 0.2, "sine", sfxGain, 0.3), 150);
+      setTimeout(()=>playNote(784, 0.3, "sine", sfxGain, 0.3), 300);
+      setTimeout(()=>playNote(1047, 0.4, "sine", sfxGain, 0.25), 500);
+    }
+  } catch(e){}
+
+  // 3秒后显示弹窗和对话
+  setTimeout(()=>{
+    const petName = petState.name || "小星";
+    if(newStage === "幼年"){
+      showModal({
+        title: "🌟 它长大了！",
+        text: petName + " 从婴儿期成长到了幼年期！\n\n它变得更活泼了，也更懂事了。",
+        actions:[{ label:"太好了！", type:"primary", onClick:()=>{} }]
+      });
+      setTimeout(()=>{
+        if(currentPage === "home"){
+          showBubbleFor("home", pick(["我长大了一点点！","嘿嘿，我不是小宝宝了~","（蹦蹦跳跳）我可以自己走啦！","你看你看，我是不是变大了？"]), 5000);
+        }
+      }, 500);
+    } else if(newStage === "成年"){
+      showModal({
+        title: "✨ 它成年了！",
+        text: petName + " 从幼年期成长到了成年期！\n\n它已经完全长大了，可以解锁职业、日记和伴侣系统了。",
+        actions:[{ label:"恭喜！", type:"primary", onClick:()=>{} }]
+      });
+      const adultLines = {
+        "公主病":"本公主……谢谢你。哼，本公主说一次就够了。",
+        "本大人":"本大人承认，你做得不错。",
+        "小可爱":"宝宝长大了！谢谢你一直照顾我～",
+        "傲娇":"才、才不是想感谢你。……算了，谢谢你。",
+        "冷淡":"……谢谢。",
+        "疯批":"哈哈哈哈谢谢你陪我疯！",
+        "学者":"在下感激不尽。这些日子，都记录在案。",
+        "戏精":"本宫这一生，感谢有你。",
+        "憨憨":"嘿嘿，谢谢你。俺以后也会好好的。",
+        "病娇":"你是我的。永远都是。"
+      };
+      setTimeout(()=>{
+        if(currentPage === "home"){
+          showBubbleFor("home", adultLines[petState.mask] || "谢谢你。", 5000);
+        }
+      }, 500);
+    }
+    growthTransition.active = false;
+  }, 2500);
+}
+
+function updateGrowthTransition(now, dt){
+  if(!growthTransition.active) return;
+  const elapsed = now - growthTransition.startTime;
+
+  // 阶段1：0-500ms 屏幕变暗
+  if(elapsed < 500){
+    growthTransition.phase = 1;
+  }
+  // 阶段2：500-1500ms 闪光+宠物变大
+  else if(elapsed < 1500){
+    growthTransition.phase = 2;
+    growthTransition.petScale = 1 + (elapsed - 500) / 1000 * 0.3;
+  }
+  // 阶段3：1500-2500ms 恢复正常
+  else if(elapsed < 2500){
+    growthTransition.phase = 3;
+    growthTransition.petScale = 1.3 - (elapsed - 1500) / 1000 * 0.3;
+  }
+}
+
+function isGrowthTransitionActive(){
+  return growthTransition.active;
+}
+
+function getGrowthTransitionOverlayAlpha(){
+  if(!growthTransition.active) return 0;
+  const elapsed = performance.now() - growthTransition.startTime;
+  if(elapsed < 300) return elapsed / 300 * 0.7;  // 变暗
+  if(elapsed < 600) return 0.7 - (elapsed - 300) / 300 * 0.7;  // 闪光恢复
+  if(elapsed < 2000) return 0;  // 正常
+  if(elapsed < 2500) return (elapsed - 2000) / 500 * 0.5;  // 结尾变暗
+  return 0;
+}
+
 /* ═══════════════ 成年阶段系统 ═══════════════ */
 function checkAdultStage(){
   if(petState.stage === "成年" || petState.stage === "老年") return;
+  if(growthTransition.active) return;  // 成长过渡中不重复触发
 
   const daysOld = (Date.now() - petState.birthTime) / 86400000;
   const s = petState.state;
 
-  // ★ 第一阶段：婴儿 → 幼年（2游戏天 或 互动15次）
+  // ★ 第一阶段：婴儿 → 幼年（1游戏天 或 互动8次，更容易触发）
   if(petState.stage === "婴儿"){
-    const canGrowToChild = daysOld >= 2 || (petState._interactCount || 0) >= 15;
+    const canGrowToChild = daysOld >= 1 || (petState._interactCount || 0) >= 8;
     if(!canGrowToChild) return;
     petState.stage = "幼年";
-    // ★ 成长弹窗提示
-    showModal({
-      title: "🌟 它长大了！",
-      text: (petState.name || "小星") + " 从婴儿期成长到了幼年期！\n\n它变得更活泼了，也更懂事了。",
-      actions:[{ label:"太好了！", type:"primary", onClick:()=>{} }]
-    });
-    setTimeout(()=>{
-      if(currentPage === "home"){
-        showBubbleFor("home", pick(["我长大了一点点！","嘿嘿，我不是小宝宝了~","（蹦蹦跳跳）我可以自己走啦！","你看你看，我是不是变大了？"]), 5000);
-      }
-    }, 1000);
+    triggerGrowthTransition("幼年");
     saveState();
     return;
   }
 
-  // ★ 第二阶段：幼年 → 成年（5游戏天，或亲密度≥60 且互动次数≥30）
-  const canGrow = daysOld >= 5 || (s.亲密度 >= 60 && (petState._interactCount || 0) >= 30);
+  // ★ 第二阶段：幼年 → 成年（3游戏天，或亲密度≥50 且互动次数≥20）
+  const canGrow = daysOld >= 3 || (s.亲密度 >= 50 && (petState._interactCount || 0) >= 20);
   if(!canGrow) return;
 
   // 阶段过渡
   petState.stage = "成年";
   petState._adultTime = Date.now();
-
-  // ★ 成年弹窗提示
-  showModal({
-    title: "✨ 它成年了！",
-    text: (petState.name || "小星") + " 从幼年期成长到了成年期！\n\n它已经完全长大了，可以解锁职业、日记和伴侣系统了。",
-    actions:[{ label:"恭喜！", type:"primary", onClick:()=>{} }]
-  });
-
-  // 成年对话
-  const adultLines = {
-    "公主病":"本公主……谢谢你。哼，本公主说一次就够了。",
-    "本大人":"本大人承认，你做得不错。",
-    "小可爱":"宝宝长大了！谢谢你一直照顾我～",
-    "傲娇":"才、才不是想感谢你。……算了，谢谢你。",
-    "冷淡":"……谢谢。",
-    "疯批":"哈哈哈哈谢谢你陪我疯！",
-    "学者":"在下感激不尽。这些日子，都记录在案。",
-    "戏精":"本宫这一生，感谢有你。",
-    "憨憨":"嘿嘿，谢谢你。俺以后也会好好的。",
-    "病娇":"你是我的。永远都是。"
-  };
-
-  setTimeout(()=>{
-    if(currentPage === "home"){
-      showBubbleFor("home", adultLines[petState.mask] || "谢谢你。", 5000);
-    }
-  }, 800);
+  triggerGrowthTransition("成年");
 
   // 自动分配职业
   assignCareer();
@@ -13869,6 +13937,9 @@ function loop(now){
     }
   }
 
+  // 成长过渡动画更新
+  updateGrowthTransition(now, dt);
+
   // 成年阶段检查（每帧判定一次，条件达成只触发一次）
   checkAdultStage();
 
@@ -13884,6 +13955,35 @@ function loop(now){
   }
 
   renderPage(currentPage, t, dt);
+
+  // ★ 成长过渡遮罩效果
+  if(growthTransition.active && currentPage === "home"){
+    const c = ctxs["home"];
+    if(c){
+      const alpha = getGrowthTransitionOverlayAlpha();
+      if(alpha > 0){
+        c.save();
+        c.fillStyle = `rgba(255, 240, 200, ${alpha})`;
+        c.fillRect(0, 0, W, H);
+        c.restore();
+      }
+      // 成长闪光粒子
+      if(growthTransition.phase === 2){
+        c.save();
+        for(let i=0;i<20;i++){
+          const a = (i/20)*TAU + t*0.005;
+          const r = 50 + Math.sin(t*0.01 + i)*30;
+          const px = pet.x + Math.cos(a)*r;
+          const py = pet.y + Math.sin(a)*r;
+          c.fillStyle = `rgba(255, 233, 168, ${0.5 + 0.3*Math.sin(t*0.01+i)})`;
+          c.beginPath();
+          c.arc(px, py, 3 + Math.sin(t*0.02+i)*2, 0, TAU);
+          c.fill();
+        }
+        c.restore();
+      }
+    }
+  }
   } catch(e){
     console.warn("loop frame error", e);
   }
