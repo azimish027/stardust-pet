@@ -1411,31 +1411,48 @@ function loadImageWithBgRemoval(src, tolerance, callback){
 
 function preloadPetImages(){
   const types = ["round","slim","fluffy","winged","horned"];
-  const moods = ["default","happy","sad","angry","fear","sleepy","sick","despair","broken","cute","hungry"];
-  let loaded = 0, total = types.length * moods.length;
-  for(const type of types){
-    PET_IMAGES[type] = {};
-    for(const mood of moods){
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = "assets/" + type + "_" + mood + ".png?t=" + Date.now();
-      const done = ()=>{
-        loaded++;
-        // 图片已经用 rembg AI 抠好图了，直接用原图，不再浏览器端抠图
-        PET_IMAGES[type][mood] = img;
-        if(loaded>=total) petImagesLoaded=true;
-      };
-      img.onload = done;
-      img.onerror = done;
-      PET_IMAGES[type][mood] = img;
+  // 三阶段表情：婴儿6种，幼年9种，成年11种
+  const stageMoods = {
+    "baby":  ["default","happy","sad","fear","sleepy","hungry"],
+    "child": ["default","happy","sad","angry","fear","sleepy","sick","cute","hungry"],
+    "adult": ["default","happy","sad","angry","fear","sleepy","sick","despair","broken","cute","hungry"]
+  };
+  let loaded = 0, total = 0;
+  for(const stage of ["baby","child","adult"]){
+    total += types.length * stageMoods[stage].length;
+  }
+  for(const stage of ["baby","child","adult"]){
+    PET_IMAGES[stage] = {};
+    for(const type of types){
+      PET_IMAGES[stage][type] = {};
+      for(const mood of stageMoods[stage]){
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        // 婴儿期前缀 baby_，幼年期前缀 child_，成年期无前缀
+        const prefix = stage === "adult" ? "" : stage + "_";
+        img.src = "assets/" + prefix + type + "_" + mood + ".png?t=" + Date.now();
+        const done = ()=>{
+          loaded++;
+          PET_IMAGES[stage][type][mood] = img;
+          if(loaded>=total) petImagesLoaded=true;
+        };
+        img.onload = done;
+        img.onerror = done;
+        PET_IMAGES[stage][type][mood] = img;
+      }
     }
   }
 }
 function getPetImage(){
   const typeKey = PET_BODY_TYPE_KEY[petState.bodyType] || "round";
   const moodKey = PET_MOOD_KEY[petState.mood] || "default";
-  const set = PET_IMAGES[typeKey];
+  // 根据成长阶段选择图片集
+  let stageKey = "adult";
+  if(petState.stage === "婴儿") stageKey = "baby";
+  else if(petState.stage === "幼年") stageKey = "child";
+  const set = PET_IMAGES[stageKey]?.[typeKey];
   if(!set) return null;
+  // 优先当前表情，没有则回退到default
   return (set[moodKey] && set[moodKey].complete && set[moodKey].naturalWidth>0) ? set[moodKey] :
          (set.default && set.default.complete && set.default.naturalWidth>0) ? set.default : null;
 }
