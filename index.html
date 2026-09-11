@@ -3807,21 +3807,21 @@ function updateState(dtMs){
   else season = "winter";
   petState.currentSeason = season;
 
-  // 季节影响基础衰减
-  let hungerRate = 8, cleanRate = 6, energyRate = 5, moodRate = 2;
+  // 季节影响基础衰减（降低衰减速度，让宠物不会那么快就饿）
+  let hungerRate = 5, cleanRate = 4, energyRate = 3, moodRate = 1;
   if(season === "summer"){
-    hungerRate = 10;  // 夏天没胃口但消耗快
-    energyRate = 7;   // 夏天容易累
-    cleanRate = 8;    // 夏天容易脏
+    hungerRate = 6;  // 夏天没胃口但消耗快
+    energyRate = 5;   // 夏天容易累
+    cleanRate = 6;    // 夏天容易脏
   } else if(season === "winter"){
-    hungerRate = 12;  // 冬天需要更多热量
-    energyRate = 4;   // 冬天想睡觉
-    moodRate = 3;     // 冬天容易抑郁
+    hungerRate = 8;  // 冬天需要更多热量
+    energyRate = 3;   // 冬天想睡觉
+    moodRate = 2;     // 冬天容易抑郁
   } else if(season === "spring"){
-    moodRate = 1;     // 春天心情好
-    energyRate = 4;   // 春天活跃
+    moodRate = 0.5;     // 春天心情好
+    energyRate = 3;   // 春天活跃
   } else if(season === "autumn"){
-    hungerRate = 10;  // 秋天囤食
+    hungerRate = 7;  // 秋天囤食
   }
 
   s.饱腹 = clamp(s.饱腹 - hungerRate*hours, 0, 100);
@@ -3874,6 +3874,22 @@ function updateState(dtMs){
   // ★ 死亡系统检测
   if(!petState._deathTimer) petState._deathTimer = { hunger:0, thirst:0, abuse:0 };
   const dt = petState._deathTimer;
+
+  // ★ 行为记忆系统：被管教后会记住，减少再犯概率
+  if(!petState.behaviorMemory) petState.behaviorMemory = {
+    随地大小便被管教: 0,
+    破坏东西被管教: 0,
+    咬人被管教: 0,
+    不听话被管教: 0,
+    lastDisciplineTime: 0
+  };
+  const bm = petState.behaviorMemory;
+  // 记忆会随时间慢慢消退（每天消退10%）
+  const memoryDecay = Math.pow(0.9, hours);
+  bm.随地大小便被管教 *= memoryDecay;
+  bm.破坏东西被管教 *= memoryDecay;
+  bm.咬人被管教 *= memoryDecay;
+  bm.不听话被管教 *= memoryDecay;
 
   // 饥饿致死：饱腹=0 且 体力<=10
   if(s.饱腹 <= 0 && s.体力 <= 10){
@@ -9683,8 +9699,12 @@ function showModal(opts){
   const card = document.getElementById("modalCard");
   let html = "";
   if(opts.title) html += '<div class="modal-title">'+opts.title+'</div>';
-  if(opts.text) html += '<div class="modal-text">'+opts.text+'</div>';
+  if(opts.text) html += '<div class="modal-text">'+opts.text.replace(/\n/g,'<br>')+'</div>';
   if(opts.html) html += opts.html;
+  // ★ 支持输入框
+  if(opts.input){
+    html += '<input type="text" id="modalInput" placeholder="'+(opts.inputPlaceholder||'')+'" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,180,220,0.5);background:rgba(255,255,255,0.9);font-size:14px;box-sizing:border-box;margin:10px 0;">';
+  }
   if(opts.actions && opts.actions.length){
     html += '<div class="modal-actions">';
     opts.actions.forEach((a,i)=>{
@@ -9696,12 +9716,25 @@ function showModal(opts){
   card.innerHTML = html;
   mask.classList.add("show");
 
+  // 自动聚焦输入框
+  if(opts.input){
+    setTimeout(()=>{
+      const inp = document.getElementById("modalInput");
+      if(inp) inp.focus();
+    }, 100);
+  }
+
   if(opts.actions){
     card.querySelectorAll(".modal-btn").forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const idx = parseInt(btn.dataset.idx);
         const a = opts.actions[idx];
-        if(a.onClick) a.onClick();
+        if(a.onClick){
+          // 如果有输入框，把值传给onClick
+          const inp = document.getElementById("modalInput");
+          const val = inp ? inp.value.trim() : null;
+          a.onClick(val);
+        }
         if(a.keepOpen !== true) hideModal();
       });
     });
@@ -12359,6 +12392,15 @@ async function doDiscipline(action){
   petState.discipline.count = (petState.discipline.count||0) + 1;
   petState.discipline.lastTime = Date.now();
 
+  // ★ 行为记忆：被管教后会记住，减少再犯概率
+  if(!petState.behaviorMemory) petState.behaviorMemory = {
+    随地大小便被管教: 0, 破坏东西被管教: 0, 咬人被管教: 0, 不听话被管教: 0, lastDisciplineTime: 0
+  };
+  petState.behaviorMemory.lastDisciplineTime = Date.now();
+  // 根据管教强度增加记忆
+  const memoryGain = disciplineState.intensity === "重" ? 30 : disciplineState.intensity === "轻" ? 10 : 20;
+  petState.behaviorMemory.不听话被管教 = clamp(petState.behaviorMemory.不听话被管教 + memoryGain, 0, 100);
+
   // ★ 身体反应系统
   let disciplineSeverity = 1;
   if(action === "训斥") disciplineSeverity = 1;
@@ -14727,6 +14769,7 @@ function openingConfirmName(name){
   petState.attributes = petState.attributes || generatePetAttributes();
   // 名字总是记录，但宠物是否使用取决于接受
   petState.attributes.givenName = name;
+  petState.name = name; // ★ 修复：同时设置petState.name
 
   if(accept === true){
     petState.selfCall = name;
