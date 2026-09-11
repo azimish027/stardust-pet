@@ -3430,47 +3430,6 @@ function drawPet(c,t){
     c.restore();
   }
 
-  // 恶魔化：头顶暗影角
-  if(petState.shadow >= 90){
-    c.save();
-    c.fillStyle = "rgba(61,31,92,0.9)";
-    c.beginPath();
-    c.moveTo(-bodyR*0.35, -bodyR*1.2);
-    c.lineTo(-bodyR*0.55, -bodyR*1.7);
-    c.lineTo(-bodyR*0.15, -bodyR*1.4);
-    c.closePath(); c.fill();
-    c.beginPath();
-    c.moveTo(bodyR*0.35, -bodyR*1.2);
-    c.lineTo(bodyR*0.55, -bodyR*1.7);
-    c.lineTo(bodyR*0.15, -bodyR*1.4);
-    c.closePath(); c.fill();
-    c.restore();
-
-    // 暗影粒子
-    c.save();
-    for(let i=0;i<6;i++){
-      const a = (i/6)*TAU + t*0.002;
-      const px = Math.cos(a) * bodyR * 1.4;
-      const py = Math.sin(a) * bodyR * 1.4;
-      c.fillStyle = "rgba(123,79,168,"+(0.4 + 0.3*Math.sin(t*0.005+i))+")";
-      c.beginPath();
-      c.arc(px, py, 3, 0, TAU);
-      c.fill();
-    }
-    c.restore();
-  }
-
-  // 天使化：头顶光环
-  if(petState.soul !== undefined && petState.soul >= 80){
-    c.save();
-    c.strokeStyle = "rgba(255,233,168,0.9)";
-    c.lineWidth = 4;
-    c.beginPath();
-    c.ellipse(0, -bodyR*1.4, bodyR*0.5, bodyR*0.14, 0, 0, TAU);
-    c.stroke();
-    c.restore();
-  }
-
   // ★ 受击闪光
   if(reaction.flashTime > 0){
     c.save();
