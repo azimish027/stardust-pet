@@ -3619,6 +3619,8 @@ function updateAutoAct(now){
   if(!a.nextTalkAt || a.nextTalkAt > now + 60000) a.nextTalkAt = now + randInt(3000, 6000);
   if(now > a.nextTalkAt){
     a.nextTalkAt = now + randInt(5000, 12000);
+    // ★ 对话保护：用户正在和它对话时，不主动说话打断
+    if(petState._isTalking) return;
     const line = autoTalkLine();
     if(line){
       showBubbleFor(currentPage, line, 5000); // 显示5秒，让玩家有时间看完
@@ -5858,6 +5860,8 @@ const playerActivity = {
 async function petSoulTick(){
   if(currentPage !== "home") return;
   if(dragging) return;
+  // ★ 对话保护：用户正在对话时，灵魂层不主动决策
+  if(petState._isTalking) return;
   if(Date.now() - soulState.lastThinkTime < soulState.thinkInterval) return;
   soulState.lastThinkTime = Date.now();
 
@@ -7214,27 +7218,40 @@ function checkAdultStage(){
   const daysOld = (Date.now() - petState.birthTime) / 86400000;
   const s = petState.state;
 
-  // ★ 第一阶段：婴儿 → 幼年（1游戏天 或 互动5次）
+  // ★ 第一阶段：婴儿 → 幼年（2游戏天 或 互动15次）
   if(petState.stage === "婴儿"){
-    const canGrowToChild = daysOld >= 1 || (petState._interactCount || 0) >= 5;
+    const canGrowToChild = daysOld >= 2 || (petState._interactCount || 0) >= 15;
     if(!canGrowToChild) return;
     petState.stage = "幼年";
+    // ★ 成长弹窗提示
+    showModal({
+      title: "🌟 它长大了！",
+      text: (petState.name || "小星") + " 从婴儿期成长到了幼年期！\n\n它变得更活泼了，也更懂事了。",
+      actions:[{ label:"太好了！", type:"primary", onClick:()=>{} }]
+    });
     setTimeout(()=>{
       if(currentPage === "home"){
-        showBubbleFor("home", pick(["我长大了一点点！","嘿嘿，我不是小宝宝了~","（蹦蹦跳跳）我可以自己走啦！"]), 4000);
+        showBubbleFor("home", pick(["我长大了一点点！","嘿嘿，我不是小宝宝了~","（蹦蹦跳跳）我可以自己走啦！","你看你看，我是不是变大了？"]), 5000);
       }
-    }, 800);
+    }, 1000);
     saveState();
     return;
   }
 
-  // ★ 第二阶段：幼年 → 成年（3游戏天，或亲密度≥50 且互动次数≥10）
-  const canGrow = daysOld >= 3 || (s.亲密度 >= 50 && (petState._interactCount || 0) >= 10);
+  // ★ 第二阶段：幼年 → 成年（5游戏天，或亲密度≥60 且互动次数≥30）
+  const canGrow = daysOld >= 5 || (s.亲密度 >= 60 && (petState._interactCount || 0) >= 30);
   if(!canGrow) return;
 
   // 阶段过渡
   petState.stage = "成年";
   petState._adultTime = Date.now();
+
+  // ★ 成年弹窗提示
+  showModal({
+    title: "✨ 它成年了！",
+    text: (petState.name || "小星") + " 从幼年期成长到了成年期！\n\n它已经完全长大了，可以解锁职业、日记和伴侣系统了。",
+    actions:[{ label:"恭喜！", type:"primary", onClick:()=>{} }]
+  });
 
   // 成年对话
   const adultLines = {
@@ -8169,8 +8186,11 @@ function showThinking(pageKey){
   if(!b || !b.el) return;
   if(b.hideTimer) clearTimeout(b.hideTimer);
   b.el.querySelector(".bubble-emoji").textContent = MASK_EMOJI[petState.mask]||"🌸";
-  b.el.querySelector(".bubble-text").textContent = "……";
+  b.el.querySelector(".bubble-text").textContent = "正在思考...";
   b.el.classList.add("show");
+  // ★ 标记正在对话，阻止主动说话打断
+  petState._isTalking = true;
+  setTimeout(()=>{ petState._isTalking = false; }, 15000);
 }
 
 function hideBubbleFor(pageKey){
@@ -14169,7 +14189,9 @@ function openingFinish(){
 
     // 初始化宠物属性
     petState.attributes = petState.attributes || generatePetAttributes();
-    petState.attributes.givenName = opening.petName || petState.selfCall;
+    // ★ 修复：用户起的名字存到 petState.name，自称保持由面具决定
+    petState.name = opening.petName || null;
+    petState.attributes.givenName = opening.petName || null;
     petState.tutorial = petState.tutorial || {
       day:0, learnedName:false, learnedEat:false, learnedToilet:false,
       learnedSleep:false, learnedBath:false, learnedNoBite:false, learnedSpeak:false,
