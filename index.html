@@ -3891,6 +3891,26 @@ function updateState(dtMs){
   bm.咬人被管教 *= memoryDecay;
   bm.不听话被管教 *= memoryDecay;
 
+  // ★ 性格渐变系统：根据玩家的行为慢慢改变宠物的性格
+  const traits = petState.traits;
+  // 被善待多了：粘人度上升，记仇度下降，胆量上升
+  if(s.亲密度 > 70 && s.信任度 > 60){
+    traits.粘人 = clamp(traits.粘人 + 0.1 * hours, 0, 100);
+    traits.记仇 = clamp(traits.记仇 - 0.05 * hours, 0, 100);
+    traits.胆量 = clamp(traits.胆量 + 0.05 * hours, 0, 100);
+  }
+  // 被虐待多了：记仇度上升，粘人度下降，胆量下降
+  if(petState.discipline.恐惧值 > 60 || petState.shadow > 50){
+    traits.记仇 = clamp(traits.记仇 + 0.15 * hours, 0, 100);
+    traits.粘人 = clamp(traits.粘人 - 0.1 * hours, 0, 100);
+    traits.胆量 = clamp(traits.胆量 - 0.1 * hours, 0, 100);
+    traits.脾气 = clamp(traits.脾气 + 0.08 * hours, 0, 100);
+  }
+  // 被忽略多了：好奇心下降，粘人度变化（可能更粘人或更冷漠）
+  if(playerActivity.lonelyStage >= 3){
+    traits.好奇 = clamp(traits.好奇 - 0.05 * hours, 0, 100);
+  }
+
   // 饥饿致死：饱腹=0 且 体力<=10
   if(s.饱腹 <= 0 && s.体力 <= 10){
     dt.hunger += dtMs;
@@ -4619,9 +4639,11 @@ function checkPetAutoBehavior(){
     }, 2000);
   }
 
-  // ★ 打翻东西（心情差/记仇高时会搞破坏）
+  // ★ 打翻东西（心情差/记仇高时会搞破坏，但被管教过会减少概率）
+  const bm = petState.behaviorMemory || { 破坏东西被管教: 0 };
+  const knockChanceReduction = 1 - (bm.破坏东西被管教 / 200); // 被管教越多，概率越低
   if((s.心情 < 30 || (petState.memory && petState.memory.grudges && petState.memory.grudges.length >= 2)) 
-     && !petState._knockingOver && Math.random() < 0.001){
+     && !petState._knockingOver && Math.random() < 0.001 * Math.max(0.1, knockChanceReduction)){
     petState._knockingOver = true;
     const zones = sceneLayout();
     // 走到食盆或水盆旁边打翻
@@ -13486,7 +13508,7 @@ function bindCanvasEvents(canvas, pageKey){
       const part = checkPart(dragStart.x, dragStart.y);
       if(part) handlePartClick(part, dragStart.x, dragStart.y);
       else {
-        // 点中宠物但没点中具体部位 → 也给回应
+        // 点中宠物但没点中具体部位 → 也给回应（增强反馈）
         petState._interactCount = (petState._interactCount || 0) + 1;
         addClickEffect(dragStart.x, dragStart.y, "#FFE9A8");
         clickBounceUntil = performance.now() + 800;
@@ -13496,7 +13518,13 @@ function bindCanvasEvents(canvas, pageKey){
           s.心情 = clamp(s.心情+2, 0, 100);
           s.亲密度 = clamp(s.亲密度+0.5, 0, 100);
           setMoodOverride("happy", 2500);
-          showBubbleFor(pageKey, pick(TOUCH_LINES));
+          // 播放抚摸音效
+          try { sfxPetHead(); } catch(e){}
+          // 身体反应：轻微抖动+脸红
+          triggerBodyReaction("blushing", 1200, 0.4);
+          triggerBodyReaction("trembling", 600, 0.2);
+          showBubbleFor(pageKey, pick(TOUCH_LINES), null, "high");
+          recordMemory("抚摸", "身体");
         }
       }
     }
