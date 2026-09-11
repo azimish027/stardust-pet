@@ -5899,18 +5899,148 @@ function checkFateBranches(){
     addDelayedReaction("喂食后报恩", 1000, {});
   }
 
-  // 命运分支3：被忽略7天 → 离家出走
+  // 命运分支3：被忽略 → 离家出走（完整回归机制）
   const daysSinceLastInteract = (now - (mem ? mem.lastInteraction : now)) / (1000 * 60 * 60 * 24);
-  if(!petState.fateFlags.离家出走 && daysSinceLastInteract >= 7){
+  const hoursSinceLastInteract = (now - (mem ? mem.lastInteraction : now)) / (1000 * 60 * 60);
+  // 触发条件：亲密度<30 + 连续12小时未互动，或者被忽略7天
+  const shouldRunAway = !petState.fateFlags.离家出走 && 
+    ((s.亲密度 < 30 && hoursSinceLastInteract >= 12) || daysSinceLastInteract >= 7);
+  
+  if(shouldRunAway && !petState.runawayState){
     petState.fateFlags.离家出走 = true;
+    petState.runawayState = {
+      leftAt: Date.now(),
+      location: pick(["客厅", "街角", "公园", "废弃星尘区", "伴侣处"]),
+      status: "出走中",
+      survivalRolls: 0,
+      letter: pick([
+        "我走了。这个家好像不需要我。",
+        "对不起，我只是想出去看看。",
+        "如果你还想要我，就来找我吧。",
+        "我会在某个地方等你……",
+        "不要找我了。"
+      ])
+    };
     showModal({
       title: "🏃 它离家出走了",
-      text: "它留下了一封信：\n'我走了。如果你还想要我，就去重新领一只吧。'\n\n（游戏结束，可以重新开始）",
-      actions:[{ label:"重新开始", type:"primary", onClick:()=>{
-        localStorage.removeItem(STORAGE_KEY);
-        location.reload();
-      }}]
+      text: "它留下了一封信：\n'" + petState.runawayState.letter + "'\n\n它现在可能在：" + petState.runawayState.location + "\n你可以选择去找它，或者等它自己回来。",
+      actions:[
+        { label:"去找它", type:"primary", onClick:()=>{
+          // 去找它：100%成功，除非它已经死了
+          if(petState.runawayState.status === "已死亡"){
+            showModal({ title:"💔 来不及了", text:"它已经不在了……\n你在" + petState.runawayState.location + "找到了它的项圈。", actions:[{label:"重新开始",type:"primary",onClick:()=>{localStorage.removeItem(STORAGE_KEY);location.reload();}}] });
+          } else {
+            petState.runawayState.status = "被找回";
+            petState.runawayState.foundAt = Date.now();
+            // 回归效果：信任度大幅降低，亲密度重置
+            s.信任度 = clamp(s.信任度 - 30, 0, 100);
+            s.亲密度 = clamp(s.亲密度 + 10, 0, 100); // 找它回来会增加一点亲密度
+            petState.shadow = clamp(petState.shadow + 10, 0, 100);
+            recordMemory("被找回", "从" + petState.runawayState.location + "找回");
+            showModal({
+              title:"✨ 找到了",
+              text:"你在" + petState.runawayState.location + "找到了它。\n它看起来很虚弱，但还活着。\n它看了你一眼，没有说话。",
+              actions:[{label:"带它回家",type:"primary",onClick:()=>{
+                petState.runawayState = null;
+                petState.fateFlags.离家出走 = false;
+                showBubbleFor("home", pick(["……你来了。","（小声）对不起。","（躲开你的目光）","……"]));
+                saveState();
+              }}]
+            });
+          }
+        }},
+        { label:"等它自己回来", type:"default", onClick:()=>{
+          // 不找：进入等待状态，宠物可能自己回来，也可能死在外面
+          petState.runawayState.waiting = true;
+          showBubbleFor("home", "你决定等它自己回来……");
+        }}
+      ]
     });
+  }
+  
+  // 出走期间的生存判定（每小时一次）
+  if(petState.runawayState && petState.runawayState.waiting){
+    const hoursAway = (Date.now() - petState.runawayState.leftAt) / (1000 * 60 * 60);
+    const rollInterval = 1; // 每小时判定一次
+    if(hoursAway >= (petState.runawayState.survivalRolls + 1) * rollInterval){
+      petState.runawayState.survivalRolls++;
+      // 生存判定：胆量、粘人度、亲密度、好奇心、外部威胁
+      const survivalChance = Math.max(0.1, 
+        0.7 - hoursAway * 0.05 + // 时间越长越危险
+        (petState.traits.胆量 - 50) * 0.005 + // 胆量高更容易活
+        (petState.traits.粘人度 - 50) * 0.003 // 粘人高更容易回来
+      );
+      
+      if(Math.random() > survivalChance){
+        // 死亡
+        petState.runawayState.status = "已死亡";
+        petState.runawayState.deathCause = pick(["被食肉动物发现了", "星尘耗尽了", "太饿了……", "受了重伤没撑过去"]);
+        showModal({
+          title:"💔 它没有回来",
+          text:"你等了很久，它还是没有回来。\n后来你听说，" + petState.runawayState.deathCause + "。\n\n（游戏结束）",
+          actions:[{label:"重新开始",type:"primary",onClick:()=>{localStorage.removeItem(STORAGE_KEY);location.reload();}}]
+        });
+      } else if(Math.random() < 0.3){
+        // 自行回归
+        const returnType = pick(["悔悟回归", "走投无路回归", "受伤回归", "假装回归"]);
+        petState.runawayState.status = returnType;
+        petState.runawayState.returnedAt = Date.now();
+        
+        let returnText = "";
+        let intimacyChange = 0;
+        let trustChange = 0;
+        
+        if(returnType === "悔悟回归"){
+          returnText = "它自己回来了。\n它看起来很后悔，蹭了蹭你的脚。";
+          intimacyChange = 15;
+          trustChange = -10;
+        } else if(returnType === "走投无路回归"){
+          returnText = "它回来了。\n它看起来很虚弱，身上很脏。\n'外面……好可怕。'";
+          intimacyChange = 5;
+          trustChange = -20;
+        } else if(returnType === "受伤回归"){
+          returnText = "它拖着受伤的身体回来了。\n它的身上有新的伤口。";
+          intimacyChange = 10;
+          trustChange = -15;
+          // 增加伤口
+          if(!Array.isArray(petState.marks)) petState.marks = [];
+          petState.marks.push({ type: pick(["鞭痕","瘀青","伤疤"]), since: Date.now() });
+        } else { // 假装回归
+          returnText = "它回来了。\n它看起来很乖，但你注意到它的眼神在躲闪。";
+          intimacyChange = 0;
+          trustChange = -30;
+          petState.shadow = clamp(petState.shadow + 20, 0, 100);
+        }
+        
+        s.亲密度 = clamp(s.亲密度 + intimacyChange, 0, 100);
+        s.信任度 = clamp(s.信任度 + trustChange, 0, 100);
+        s.体力 = clamp(s.体力 - 20, 0, 100);
+        s.饱腹 = clamp(s.饱腹 - 30, 0, 100);
+        recordMemory("自行回归", returnType);
+        
+        showModal({
+          title:"🚪 它回来了",
+          text: returnText,
+          actions:[
+            { label:"接纳它", type:"primary", onClick:()=>{
+              petState.runawayState = null;
+              petState.fateFlags.离家出走 = false;
+              s.亲密度 = clamp(s.亲密度 + 5, 0, 100);
+              showBubbleFor("home", pick(["……我回来了。","（小声）对不起。","（蹭过来）不要赶我走。","……"]));
+              saveState();
+            }},
+            { label:"拒绝它", type:"danger", onClick:()=>{
+              petState.runawayState.status = "被拒绝";
+              showModal({
+                title:"💔 你关上了门",
+                text:"它在门口站了很久，然后走了。\n这一次，它不会再回来了。\n\n（游戏结束）",
+                actions:[{label:"重新开始",type:"primary",onClick:()=>{localStorage.removeItem(STORAGE_KEY);location.reload();}}]
+              });
+            }}
+          ]
+        });
+      }
+    }
   }
 
   // 连续被打计数重置
