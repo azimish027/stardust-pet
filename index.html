@@ -8589,6 +8589,17 @@ function switchPage(name){
     const op = document.getElementById("page-opening");
     if(op) op.classList.add("active");
     currentPage = "opening";
+    // ★ 立即初始化开场canvas（不等待，确保蛋能出现）
+    try { initOpeningCanvas(); } catch(e){ console.warn("initOpeningCanvas error", e); }
+    // ★ 停止BGM和所有音效（回到开场时应该安静）
+    try { stopBgm(); } catch(e){}
+    // 停止所有正在播放的音效
+    if(audioCtx){
+      try {
+        // 淡出所有音效
+        if(sfxGain) sfxGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+      } catch(e){}
+    }
     return;
   }
 
@@ -14462,6 +14473,15 @@ function openingFinish(){
 
     // 切换到主页面
     switchPage("home");
+
+    // ★ 重新启动BGM和音效（开场时停止了）
+    setTimeout(()=>{
+      try { startBgm(); } catch(e){}
+      // 恢复音效音量
+      if(audioCtx && sfxGain){
+        try { sfxGain.gain.setTargetAtTime((settings.sfxVolume || 0.7) * 0.35, audioCtx.currentTime, 0.2); } catch(e){}
+      }
+    }, 500);
 
     // 出生后的问候
     setTimeout(()=>{
