@@ -3358,14 +3358,29 @@ function drawPet(c,t){
   // 光晕
   drawGlow(c,t,bodyR);
 
-  // 灵魂倾向影响身体颜色（在AI贴图上叠加半透明色）
+  // 灵魂倾向影响身体颜色（改成自然的边缘渐变，不是实心圆）
   if(petState.shadow > 60){
     c.save();
-    c.globalAlpha = Math.min(0.35, (petState.shadow - 60) / 100);
-    c.fillStyle = "rgba(123,79,168,1)";
+    const shadowIntensity = Math.min(0.4, (petState.shadow - 60) / 100);
+    // 边缘渐变：从边缘的深紫到中心透明，像暗影从身体渗出
+    const shadowGrad = c.createRadialGradient(0, 0, bodyR * 0.3, 0, 0, bodyR * 1.1);
+    shadowGrad.addColorStop(0, "rgba(123,79,168,0)");
+    shadowGrad.addColorStop(0.7, `rgba(123,79,168,${shadowIntensity * 0.5})`);
+    shadowGrad.addColorStop(1, `rgba(61,31,92,${shadowIntensity})`);
+    c.fillStyle = shadowGrad;
     c.beginPath();
-    c.arc(0, 0, bodyR * 1.05, 0, TAU);
+    c.arc(0, 0, bodyR * 1.1, 0, TAU);
     c.fill();
+    // 暗影粒子（少量，不夸张）
+    for(let i=0;i<3;i++){
+      const a = (i/3)*TAU + t*0.001;
+      const px = Math.cos(a) * bodyR * 1.2;
+      const py = Math.sin(a) * bodyR * 1.2;
+      c.fillStyle = `rgba(123,79,168,${shadowIntensity * 0.6})`;
+      c.beginPath();
+      c.arc(px, py, 2 + Math.sin(t*0.005+i), 0, TAU);
+      c.fill();
+    }
     c.restore();
   }
 
@@ -3417,18 +3432,6 @@ function drawPet(c,t){
 
   // ★ 身体反应系统（哭泣、晕厥、抽搐、呕吐等）
   drawBodyReactions(c, t, bodyR, headR);
-
-  // 暗影影响宠物：暗影值高时叠加暗色
-  const shadowA = petState.shadow / 100;
-  if(shadowA > 0.3){
-    c.save();
-    c.globalAlpha = Math.min(0.4, (shadowA - 0.3) * 0.7);
-    c.fillStyle = "rgba(61,31,92,0.8)";
-    c.beginPath();
-    c.arc(0, 0, bodyR * 1.05, 0, TAU);
-    c.fill();
-    c.restore();
-  }
 
   // ★ 受击闪光
   if(reaction.flashTime > 0){
