@@ -8621,6 +8621,7 @@ const HOME_BUTTONS = [
   { icon:"⚡", iconClass:"icon-discipline", iconSrc:"assets/icon_discipline.png", label:"管教", action:()=>switchPage("discipline") },
   { icon:"🎀", iconClass:"icon-dress", iconSrc:"assets/icon_dress.png", label:"装扮", action:()=>switchPage("dress") },
   { icon:"📖", iconClass:"icon-diary", iconSrc:"assets/icon_diary.png", label:"日记", action:()=>switchPage("diary") },
+  { icon:"💊", iconClass:"icon-medicine", iconSrc:"assets/icon_medicine.png", label:"万能药", action:()=>giveMedicine() },
   { icon:"⚙️", iconClass:"icon-settings", iconSrc:"assets/icon_settings.png", label:"设置", action:()=>switchPage("settings") }
 ];
 
@@ -8652,6 +8653,65 @@ function initHomeButtons(){
     }
     div.addEventListener("click", b.action);
     el.appendChild(div);
+  });
+}
+
+/* ═══════════════ 万能药功能 ═══════════════ */
+let medicineCount = 3;  // 初始有3瓶万能药
+
+function giveMedicine(){
+  if(medicineCount <= 0){
+    showModal({
+      title: "💊 万能药用完了",
+      text: "万能药已经用完了！\n\n可以在设置页重新领取。",
+      actions:[{ label:"好吧", type:"primary", onClick:()=>{} }]
+    });
+    return;
+  }
+
+  showModal({
+    title: "💊 使用万能药？",
+    text: "万能药可以完全恢复宠物的所有状态，治愈所有伤口。\n\n确定要使用吗？（剩余 " + medicineCount + " 瓶）",
+    actions:[
+      { label:"使用", type:"primary", onClick:()=>{
+        medicineCount--;
+        const s = petState.state;
+        // ★ 完全恢复所有状态
+        s.饱腹 = 100;
+        s.清洁 = 100;
+        s.体力 = 100;
+        s.心情 = 80;
+        s.健康 = 100;
+        s.亲密度 = clamp(s.亲密度 + 10, 0, 100);
+        s.信任度 = clamp(s.信任度 + 5, 0, 100);
+        // 治愈所有伤口
+        if(Array.isArray(petState.marks)) petState.marks = [];
+        // 清除暗影值（部分恢复）
+        petState.shadow = clamp(petState.shadow - 30, 0, 100);
+        // 清除负面状态
+        petState.mood = "happy";
+        setMoodOverride("happy", 5000);
+        // 播放吃药音效
+        try {
+          if(audioCtx && sfxGain){
+            playNote(523, 0.15, "sine", sfxGain, 0.3);
+            setTimeout(()=>playNote(659, 0.15, "sine", sfxGain, 0.3), 100);
+            setTimeout(()=>playNote(784, 0.2, "sine", sfxGain, 0.3), 200);
+          }
+        } catch(e){}
+        // 宠物反应
+        const lines = [
+          "哇！感觉好多了！",
+          "（眼睛亮了起来）谢谢你！",
+          "嘿嘿，又有精神了！",
+          "（蹦蹦跳跳）我好啦！",
+          "这个药好神奇呀！"
+        ];
+        showBubbleFor("home", pick(lines), 4000);
+        saveState();
+      }},
+      { label:"取消", type:"default", onClick:()=>{} }
+    ]
   });
 }
 
@@ -12347,47 +12407,23 @@ function drawDarkScene(c, t){
   const d = petState.discipline;
   c.save();
 
-  // 暗紫背景渐变
+  // 暗紫背景渐变（简化版，移除复杂的糖果结界大圆圈）
   const bg = c.createRadialGradient(bx, by, 50, bx, by, Math.max(W,H)*0.7);
-  bg.addColorStop(0, "rgba(61,31,92,0.3)");
-  bg.addColorStop(1, "rgba(26,10,46,0.9)");
+  bg.addColorStop(0, "rgba(61,31,92,0.2)");
+  bg.addColorStop(1, "rgba(26,10,46,0.85)");
   c.fillStyle = bg;
   c.fillRect(0, 0, W, H);
 
-  // 糖果结界（半透明粉紫光罩，缓慢旋转）
-  const pulse = 0.5 + 0.5*Math.sin(t*0.003);
+  // ★ 简化版结界：只有一圈淡淡的虚线，不旋转、不发光、不装饰
   c.save();
   c.translate(bx, by);
-  c.rotate(t * 0.0005);
-  // 外层光晕
-  const glow = c.createRadialGradient(0, 0, bodyRadius()*0.5, 0, 0, bodyRadius()*2.5);
-  glow.addColorStop(0, "rgba(255,180,220,"+(0.1+0.1*pulse)+")");
-  glow.addColorStop(0.7, "rgba(180,140,220,"+(0.15+0.1*pulse)+")");
-  glow.addColorStop(1, "rgba(123,79,168,0)");
-  c.fillStyle = glow;
+  c.strokeStyle = "rgba(200,170,230,0.25)";
+  c.lineWidth = 2;
+  c.setLineDash([8, 6]);
   c.beginPath();
-  c.arc(0, 0, bodyRadius()*2.5, 0, TAU);
-  c.fill();
-  // 结界边框
-  c.strokeStyle = "rgba(255,180,220,"+(0.4+0.2*pulse)+")";
-  c.lineWidth = 3;
-  c.setLineDash([15, 10]);
-  c.lineDashOffset = -t * 0.02;
-  c.beginPath();
-  c.arc(0, 0, bodyRadius()*2.0, 0, TAU);
+  c.arc(0, 0, bodyRadius()*1.6, 0, TAU);
   c.stroke();
   c.setLineDash([]);
-  // 结界上的星星装饰
-  for(let i=0;i<8;i++){
-    const a = (i/8)*TAU + t*0.001;
-    const sx = Math.cos(a) * bodyRadius()*2.0;
-    const sy = Math.sin(a) * bodyRadius()*2.0;
-    c.fillStyle = "rgba(255,233,168,"+(0.6+0.4*Math.sin(t*0.005+i))+")";
-    c.font = "14px sans-serif";
-    c.textAlign = "center";
-    c.textBaseline = "middle";
-    c.fillText("✦", sx, sy);
-  }
   c.restore();
 
   // 暗影光晕（随着黑化值上升而加深）
