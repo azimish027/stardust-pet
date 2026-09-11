@@ -9035,6 +9035,47 @@ const TOUCH_LINES = [
 function handlePartClick(part,x,y){
   playerActivity.lastInteraction = Date.now();
 
+  // ★ 伤口交互：点击到伤口位置时，宠物会有疼痛反应
+  if(petState.marks && petState.marks.length > 0){
+    const bodyR = bodyRadius();
+    // 检查点击位置是否靠近某个伤口
+    for(let i=0;i<petState.marks.length;i++){
+      const mk = petState.marks[i];
+      const seed = i*1.73;
+      const mx = pet.x + Math.sin(seed)*0.5*bodyR;
+      const my = pet.y + (Math.cos(seed*0.8)*0.42+0.12)*bodyR;
+      const dist = Math.hypot(x - mx, y - my);
+      if(dist < bodyR * 0.4){
+        // 碰到伤口了！
+        const s = petState.state;
+        triggerBodyReaction("trembling", 1500, 0.7);
+        triggerBodyReaction("crying_whimper", 1200, 0.5);
+        const painLines = [
+          "（倒吸一口气）嘶……疼！",
+          "（缩起来）不要碰那里……",
+          "（眼泪汪汪）好疼……",
+          "（发抖）你弄疼我了……",
+          "（小声呜咽）呜呜……",
+          "（躲开）那里还没好……",
+          "（咬嘴唇）……轻点。"
+        ];
+        showBubbleFor("home", pick(painLines), 3000);
+        s.心情 = clamp(s.心情 - 3, 0, 100);
+        // 伤口可能会因为触碰而加重（小概率）
+        if(Math.random() < 0.1){
+          mk.touched = (mk.touched || 0) + 1;
+          if(mk.touched >= 3){
+            // 伤口裂开了
+            showBubbleFor("home", "（伤口渗出一点血）……又裂开了。", 3000);
+            s.体力 = clamp(s.体力 - 5, 0, 100);
+          }
+        }
+        recordMemory("被碰到伤口", mk.type);
+        return;
+      }
+    }
+  }
+
   // ★ 被重新理到时的恢复反应（如果之前处于孤独状态）
   if(playerActivity.lonelyStage >= 2){
     const stage = playerActivity.lonelyStage;
@@ -13449,22 +13490,77 @@ const LOCAL_REPLIES = {
 
 function localReply(input){
   const pool = LOCAL_REPLIES[petState.mask] || LOCAL_REPLIES["小可爱"];
-  if(input.indexOf("你好")>=0 || input.indexOf("嗨")>=0 || input.indexOf("在吗")>=0){
-    return pick(["……嗯，在。","你来了。","哼，终于想起我了？","小可爱在呀～"]);
+  const s = petState.state;
+  const name = petState.name || "小星";
+
+  // ★ 基于当前状态的回复（更真实）
+  if(s.饱腹 < 30 && /饿|吃|饭|食物/.test(input)){
+    return pick(["我好饿……","肚子咕咕叫了……","什么时候吃饭呀？","我想吃东西……"]);
   }
-  if(input.indexOf("吃")>=0 || input.indexOf("饿")>=0){
-    return pick(["我要吃好吃的！","……随便吧。","肚子在叫了。","什么时候开饭？"]);
+  if(s.体力 < 30 && /困|睡|累|休息/.test(input)){
+    return pick(["好困……","我想睡觉了……","眼皮好重……","让我睡一会儿嘛……"]);
   }
-  if(input.indexOf("喜欢")>=0 || input.indexOf("爱你")>=0){
+  if(s.清洁 < 30 && /脏|臭|洗澡|干净/.test(input)){
+    return pick(["我身上好脏……","是不是该洗澡了……","唔……有点臭臭的"]);
+  }
+  if(petState.mood === "sad" && /怎么了|难过|伤心|哭/.test(input)){
+    return pick(["……没什么。","（低头）我没事。","只是有点难过……"]);
+  }
+  if(petState.mood === "fear" && /怕|害怕|怎么了/.test(input)){
+    return pick(["……我有点怕。","（发抖）没、没事。"]);
+  }
+
+  // ★ 关键词匹配（更丰富）
+  if(/你好|嗨|在吗|在不在|哈喽/.test(input)){
+    if(s.亲密度 > 70) return pick(["你来了！我一直在等你～","嘿嘿，你终于来啦！","欢迎欢迎～"]);
+    else if(s.亲密度 < 30) return pick(["……哦。","……你是谁来着？","嗯。"]);
+    return pick(["……嗯，在。","你来了。","哼，终于想起我了？","在呀～"]);
+  }
+  if(/吃|饿|饭|食物|零食/.test(input)){
+    return pick(["我要吃好吃的！","……随便吧。","肚子在叫了。","什么时候开饭？","有好吃的吗？"]);
+  }
+  if(/喜欢|爱你|想你|宝贝|抱抱/.test(input)){
+    if(s.亲密度 > 60) return pick(["……我也是。","嘿嘿，我也喜欢你～","（脸红）才、才没有很想你。","抱抱！"]);
     return pick(["……哼，知道了。","人家也……才不告诉你。","嘿嘿。","本大人准你喜欢。"]);
   }
-  if(input.indexOf("对不起")>=0 || input.indexOf("抱歉")>=0){
+  if(/对不起|抱歉|原谅|错了/.test(input)){
+    if(petState.memory && petState.memory.grudges.length >= 3) return pick(["……我还没原谅你。","哼，现在知道错了？","……下次还敢吗？"]);
     return pick(["……算了。","原谅你一次。","哼，下不为例。","唔……好吧。"]);
   }
-  if(input.indexOf("坏")>=0 || input.indexOf("讨厌")>=0 || input.indexOf("笨")>=0){
-    return pick(["你说什么？","本公主不依！","呜……","哼，不理你了。"]);
+  if(/坏|讨厌|笨|傻|滚|废物|滚开/.test(input)){
+    if(s.信任度 < 30) return pick(["……你总是这样。","（眼眶红了）我知道了。","……我走就是了。"]);
+    return pick(["你说什么？","本公主不依！","呜……","哼，不理你了。","你才笨呢！"]);
   }
-  return pick(pool);
+  if(/名字|你叫什么|叫什么/.test(input)){
+    return pick(["我叫" + name + "呀！","你忘了吗？我是" + name + "。","……" + name + "。"]);
+  }
+  if(/我叫|我的名字是|我是/.test(input)){
+    return pick(["记住了！","嘿嘿，我会记住的。","好的，我记住了～"]);
+  }
+  if(/生日|什么时候生日|你生日/.test(input)){
+    return pick(["生日是什么呀？","有好吃的吗？","……我不知道。"]);
+  }
+  if(/玩|玩耍|游戏|陪我/.test(input)){
+    if(s.体力 > 30) return pick(["好呀好呀！玩什么？","来来来！","我最喜欢玩了！"]);
+    return pick(["……我有点累了。","下次再玩好不好？","好困……"]);
+  }
+  if(/洗澡|干净|脏/.test(input)){
+    if(s.清洁 > 70) return pick(["我很干净呀！","刚洗过澡呢～"]);
+    return pick(["……不要嘛。","又要洗澡？","唔……好吧。"]);
+  }
+  if(/伤口|疼|受伤|痛/.test(input)){
+    if(petState.marks && petState.marks.length > 0) return pick(["……还有一点疼。","（低头）没事的。","你关心我吗？"]);
+    return pick(["我没有受伤呀！","我很好～"]);
+  }
+  if(/主人|你叫我|称呼/.test(input)){
+    return pick(["主人！","嘿嘿，主人～","……主人。"]);
+  }
+
+  // ★ 基于亲密度的通用回复
+  if(s.亲密度 > 80) return pick(["嘿嘿，你在说什么呀？","我最喜欢你了！","（蹭蹭）你真好～","一直陪着我好不好？"]);
+  if(s.亲密度 > 50) return pick(pool);
+  if(s.亲密度 > 30) return pick(["……嗯。","哦。","这样啊。","……然后呢？"]);
+  return pick(["……","（看了你一眼）","……你是谁？","不要跟我说话。"]);
 }
 
 async function sendMessage(input, pageKey){
