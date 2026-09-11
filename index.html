@@ -5348,6 +5348,91 @@ const CHORD_DARK = [
   { name: "E", notes: ["E3","G#3","B3"], bass: "E2" }
 ];
 
+/* ═══════════════ 战斗BGM（暗影管教模式） ═══════════════ */
+// 战斗旋律：激烈、紧张、快速，不和谐音程
+const MELODY_BATTLE = [
+  // 小节1 (Am)
+  {note:"A4", dur:0.5}, {note:"C5", dur:0.5}, {note:"D#5", dur:0.5}, {note:"E5", dur:0.5},
+  {note:"D#5", dur:0.5}, {note:"C5", dur:0.5}, {note:"A4", dur:0.5}, {note:"G#4", dur:0.5},
+  // 小节2 (Edim)
+  {note:"E4", dur:0.5}, {note:"G4", dur:0.5}, {note:"A#4", dur:0.5}, {note:"B4", dur:0.5},
+  {note:"A#4", dur:0.5}, {note:"G4", dur:0.5}, {note:"E4", dur:0.5}, {note:"D#4", dur:0.5},
+  // 小节3 (F)
+  {note:"F4", dur:0.5}, {note:"A4", dur:0.5}, {note:"C5", dur:0.5}, {note:"C#5", dur:0.5},
+  {note:"C5", dur:0.5}, {note:"A4", dur:0.5}, {note:"F4", dur:0.5}, {note:"E4", dur:0.5},
+  // 小节4 (E)
+  {note:"E4", dur:0.5}, {note:"G#4", dur:0.5}, {note:"B4", dur:0.5}, {note:"C5", dur:0.5},
+  {note:"B4", dur:0.5}, {note:"G#4", dur:0.5}, {note:"E4", dur:0.5}, {note:"D#4", dur:0.5},
+  // 重复+变奏
+  {note:"A4", dur:0.25}, {note:"C5", dur:0.25}, {note:"D#5", dur:0.25}, {note:"E5", dur:0.25},
+  {note:"F5", dur:0.25}, {note:"E5", dur:0.25}, {note:"D#5", dur:0.25}, {note:"C5", dur:0.25},
+  {note:"E4", dur:0.25}, {note:"G4", dur:0.25}, {note:"A#4", dur:0.25}, {note:"B4", dur:0.25},
+  {note:"C5", dur:0.25}, {note:"B4", dur:0.25}, {note:"A#4", dur:0.25}, {note:"G4", dur:0.25},
+  {note:"A4", dur:1}, {note:"G#4", dur:1}, {note:"A4", dur:1}, {note:"E4", dur:1}
+];
+
+// 战斗和弦：不和谐减和弦，制造紧张感
+const CHORD_BATTLE = [
+  { name: "Am", notes: ["A3","C4","E4"], bass: "A2" },
+  { name: "Edim", notes: ["E3","G3","A#3"], bass: "E2" },
+  { name: "F", notes: ["F3","A3","C4"], bass: "F2" },
+  { name: "E", notes: ["E3","G#3","B3"], bass: "E2" }
+];
+
+/* ═══════════════ 笼子BGM（禁闭/孤独） ═══════════════ */
+// 笼子旋律：稀疏、缓慢、大量留白，像空荡的房间
+const MELODY_CAGE = [
+  {note:"A3", dur:3}, {note:null, dur:1},
+  {note:"E4", dur:2}, {note:null, dur:2},
+  {note:"C4", dur:3}, {note:null, dur:1},
+  {note:"G3", dur:2}, {note:null, dur:2},
+  {note:"A3", dur:4}, {note:null, dur:4},
+  {note:"F3", dur:3}, {note:null, dur:1},
+  {note:"C4", dur:2}, {note:null, dur:2},
+  {note:"E3", dur:4}, {note:null, dur:4},
+  {note:"A3", dur:2}, {note:"G#3", dur:2},
+  {note:"A3", dur:4}, {note:null, dur:4}
+];
+
+// 笼子和弦：低沉、压抑，持续音
+const CHORD_CAGE = [
+  { name: "Am", notes: ["A2","C3","E3"], bass: "A1" },
+  { name: "Em", notes: ["E2","G2","B2"], bass: "E1" },
+  { name: "F", notes: ["F2","A2","C3"], bass: "F1" },
+  { name: "E", notes: ["E2","G#2","B2"], bass: "E1" }
+];
+
+/* ═══════════════ 伤感BGM（心情差/绝望） ═══════════════ */
+// 伤感旋律：缓慢、温柔、小调和弦，像哭泣
+const MELODY_SAD = [
+  // 小节1 (Am)
+  {note:"A4", dur:2}, {note:"G4", dur:1}, {note:"E4", dur:1},
+  // 小节2 (Em)
+  {note:"E4", dur:2}, {note:"D4", dur:1}, {note:"C4", dur:1},
+  // 小节3 (F)
+  {note:"F4", dur:2}, {note:"E4", dur:1}, {note:"D4", dur:1},
+  // 小节4 (E)
+  {note:"E4", dur:2}, {note:"D#4", dur:1}, {note:"E4", dur:1},
+  // 小节5 (Am)
+  {note:"C5", dur:2}, {note:"A4", dur:2},
+  // 小节6 (Em)
+  {note:"B4", dur:2}, {note:"E4", dur:2},
+  // 小节7 (F)
+  {note:"A4", dur:2}, {note:"F4", dur:2},
+  // 小节8 (E)
+  {note:"G#4", dur:2}, {note:"E4", dur:2},
+  // 结尾
+  {note:"A4", dur:4}, {note:null, dur:2}, {note:"E4", dur:2}
+];
+
+// 伤感和弦：小调和弦，悲伤温柔
+const CHORD_SAD = [
+  { name: "Am", notes: ["A3","C4","E4"], bass: "A2" },
+  { name: "Em", notes: ["E3","G3","B3"], bass: "E2" },
+  { name: "F", notes: ["F3","A3","C4"], bass: "F2" },
+  { name: "E", notes: ["E3","G#3","B3"], bass: "E2" }
+];
+
 let bgmState = {
   playing: false,
   currentChord: 0,
@@ -5393,7 +5478,7 @@ function bgmScheduler(){
     const style = bgmState.currentStyle;
 
     if(style === "dark"){
-      // 暗影管教BGM
+      // 暗影管教BGM（保留旧版）
       const chord = CHORD_DARK[bgmState.currentChord % CHORD_DARK.length];
       const beatInBar = bgmState.beat % 4;
 
@@ -5429,6 +5514,142 @@ function bgmScheduler(){
       // 偶尔的钟声（每8拍一次）
       if(bgmState.beat % 8 === 4){
         playBgmNote(NOTE_FREQ["C5"], beatDuration * 2, "sine", 0.03, t);
+      }
+
+      bgmState.beat++;
+      if(bgmState.beat % 4 === 0){
+        bgmState.currentChord++;
+      }
+      bgmState.nextNoteTime += beatDuration;
+
+    } else if(style === "battle"){
+      // ★ 战斗BGM（暗影管教模式）：激烈、紧张、快速
+      const chord = CHORD_BATTLE[bgmState.currentChord % CHORD_BATTLE.length];
+      const beatInBar = bgmState.beat % 4;
+
+      // 快速低音脉冲（每拍都有，像心跳加速）
+      playBgmNote(NOTE_FREQ[chord.bass], beatDuration * 0.4, "sawtooth", 0.08, t);
+      playBgmNote(NOTE_FREQ[chord.bass], beatDuration * 0.3, "sine", 0.12, t + beatDuration * 0.5);
+
+      // 不和谐和弦铺底（锯齿波，紧张感）
+      const chordNote = chord.notes[beatInBar % chord.notes.length];
+      playBgmNote(NOTE_FREQ[chordNote], beatDuration * 0.6, "sawtooth", 0.03, t);
+
+      // 战斗旋律（快速、不和谐音程）
+      const melody = MELODY_BATTLE;
+      if(bgmState.melodyIndex < melody.length){
+        const m = melody[bgmState.melodyIndex];
+        if(m.note && NOTE_FREQ[m.note]){
+          playBgmNote(NOTE_FREQ[m.note], beatDuration * m.dur * 0.8, "square", 0.05, t);
+        }
+        bgmState.melodyBeat += 1;
+        if(bgmState.melodyBeat >= m.dur){
+          bgmState.melodyBeat = 0;
+          bgmState.melodyIndex++;
+          if(bgmState.melodyIndex >= melody.length){
+            bgmState.melodyIndex = 0;
+          }
+        }
+      }
+
+      // 鼓点（白噪声模拟，每拍）
+      if(beatInBar === 0 || beatInBar === 2){
+        playBgmNote(150, 0.08, "square", 0.06, t);
+      }
+      // 刺耳高音警报（每8拍一次）
+      if(bgmState.beat % 8 === 0){
+        playBgmNote(NOTE_FREQ["A5"], beatDuration * 0.5, "sawtooth", 0.04, t);
+      }
+
+      bgmState.beat++;
+      if(bgmState.beat % 4 === 0){
+        bgmState.currentChord++;
+      }
+      bgmState.nextNoteTime += beatDuration;
+
+    } else if(style === "cage"){
+      // ★ 笼子BGM（禁闭/孤独）：缓慢、稀疏、压抑
+      const chord = CHORD_CAGE[bgmState.currentChord % CHORD_CAGE.length];
+      const beatInBar = bgmState.beat % 8; // 8拍一小节，更慢
+
+      // 极慢的低音持续音（每8拍一次）
+      if(beatInBar === 0){
+        playBgmNote(NOTE_FREQ[chord.bass], beatDuration * 6, "sine", 0.1, t);
+      }
+
+      // 稀疏的和弦音（每2拍一个，大量留白）
+      if(beatInBar % 2 === 0){
+        const chordNote = chord.notes[Math.floor(beatInBar / 2) % chord.notes.length];
+        playBgmNote(NOTE_FREQ[chordNote], beatDuration * 1.5, "triangle", 0.03, t);
+        // 回声效果（延迟重复，像在笼子里回响）
+        playBgmNote(NOTE_FREQ[chordNote], beatDuration * 1.2, "sine", 0.015, t + beatDuration * 0.8);
+      }
+
+      // 笼子旋律（极稀疏，大量休止符）
+      const melody = MELODY_CAGE;
+      if(bgmState.melodyIndex < melody.length){
+        const m = melody[bgmState.melodyIndex];
+        if(m.note && NOTE_FREQ[m.note]){
+          playBgmNote(NOTE_FREQ[m.note], beatDuration * m.dur * 0.9, "sine", 0.05, t);
+          // 回声
+          playBgmNote(NOTE_FREQ[m.note], beatDuration * m.dur * 0.7, "sine", 0.02, t + beatDuration * 0.5);
+        }
+        bgmState.melodyBeat += 1;
+        if(bgmState.melodyBeat >= m.dur){
+          bgmState.melodyBeat = 0;
+          bgmState.melodyIndex++;
+          if(bgmState.melodyIndex >= melody.length){
+            bgmState.melodyIndex = 0;
+          }
+        }
+      }
+
+      // 偶尔的金属碰撞声（像笼子栏杆，每16拍一次）
+      if(bgmState.beat % 16 === 8){
+        playBgmNote(NOTE_FREQ["C6"], 0.1, "square", 0.02, t);
+        playBgmNote(NOTE_FREQ["G5"], 0.15, "square", 0.015, t + 0.1);
+      }
+
+      bgmState.beat++;
+      if(bgmState.beat % 8 === 0){
+        bgmState.currentChord++;
+      }
+      bgmState.nextNoteTime += beatDuration;
+
+    } else if(style === "sad"){
+      // ★ 伤感BGM（心情差/绝望）：悲伤、温柔、缓慢
+      const chord = CHORD_SAD[bgmState.currentChord % CHORD_SAD.length];
+      const beatInBar = bgmState.beat % 4;
+
+      // 缓慢的低音（每小节第一拍）
+      if(beatInBar === 0){
+        playBgmNote(NOTE_FREQ[chord.bass], beatDuration * 3, "sine", 0.08, t);
+      }
+
+      // 温柔的和弦铺底（钢琴音色，纯净正弦波）
+      const chordNote = chord.notes[beatInBar % chord.notes.length];
+      playBgmNote(NOTE_FREQ[chordNote], beatDuration * 1.2, "sine", 0.035, t);
+
+      // 伤感旋律（缓慢、长音符、偶尔休止）
+      const melody = MELODY_SAD;
+      if(bgmState.melodyIndex < melody.length){
+        const m = melody[bgmState.melodyIndex];
+        if(m.note && NOTE_FREQ[m.note]){
+          playBgmNote(NOTE_FREQ[m.note], beatDuration * m.dur * 0.95, "sine", 0.06, t);
+        }
+        bgmState.melodyBeat += 1;
+        if(bgmState.melodyBeat >= m.dur){
+          bgmState.melodyBeat = 0;
+          bgmState.melodyIndex++;
+          if(bgmState.melodyIndex >= melody.length){
+            bgmState.melodyIndex = 0;
+          }
+        }
+      }
+
+      // 偶尔的高音装饰（像哭泣时的颤音，每8拍一次）
+      if(bgmState.beat % 8 === 6){
+        playBgmNote(NOTE_FREQ["E5"], beatDuration * 1.5, "sine", 0.025, t);
       }
 
       bgmState.beat++;
@@ -5485,12 +5706,14 @@ function updateBgmStyle(){
   let newBpm = 90;
   let newGain = 0.08;
 
-  // ★ 暗影管教页面：强制切换到暗黑BGM
+  // ★ 优先级1：暗影管教页面 → 战斗BGM（激烈紧张）
   if(currentPage === "dark" || petState.discipline?.darkMode){
-    newStyle = "dark";
-    newBpm = 50;
+    newStyle = "battle";
+    // 宠物越害怕，BPM越快（120→140动态变化）
+    const fear = petState.discipline?.恐惧值 || 0;
+    newBpm = 120 + Math.floor(fear / 100 * 20);
     newGain = 0.1;
-    bgmState.currentStyle = "dark";
+    bgmState.currentStyle = "battle";
     bgmState.bpm = newBpm;
     bgmState.targetGain = newGain;
     bgmState.melodyIndex = 0;
@@ -5499,6 +5722,37 @@ function updateBgmStyle(){
     return;
   }
 
+  // ★ 优先级2：关在笼子里 → 笼子BGM（压抑孤独）
+  if(currentPage === "cage" || petState.inCage){
+    newStyle = "cage";
+    newBpm = 45;
+    newGain = 0.06;
+    bgmState.currentStyle = "cage";
+    bgmState.bpm = newBpm;
+    bgmState.targetGain = newGain;
+    bgmState.melodyIndex = 0;
+    bgmState.melodyBeat = 0;
+    bgmState.currentChord = 0;
+    return;
+  }
+
+  // ★ 优先级3：宠物心情很差/绝望/精神受损 → 伤感BGM
+  const mood = petState.mood;
+  const moodVal = petState.state?.心情 || 50;
+  if(mood === "despair" || mood === "broken" || moodVal < 20){
+    newStyle = "sad";
+    newBpm = 65;
+    newGain = 0.07;
+    bgmState.currentStyle = "sad";
+    bgmState.bpm = newBpm;
+    bgmState.targetGain = newGain;
+    bgmState.melodyIndex = 0;
+    bgmState.melodyBeat = 0;
+    bgmState.currentChord = 0;
+    return;
+  }
+
+  // 优先级4：时间影响
   if(isNightTime()){
     newStyle = "night";
     newBpm = 60;
@@ -5513,11 +5767,8 @@ function updateBgmStyle(){
     newGain = 0.09;
   }
 
-  // 场景影响
-  if(currentPage === "cage" || currentPage === "discipline"){
-    newGain *= 0.4;
-    newBpm = 50;
-  } else if(currentPage === "feed" || currentPage === "play"){
+  // 场景影响（喂食/玩耍稍快）
+  if(currentPage === "feed" || currentPage === "play"){
     newBpm = Math.min(newBpm + 15, 120);
   }
 
@@ -8351,6 +8602,9 @@ function switchPage(name){
   const target = document.getElementById("page-"+name);
   if(target) target.classList.add("active");
   currentPage = name;
+
+  // ★ 切换页面时立即更新BGM风格（不再等5秒）
+  if(bgmState.playing) updateBgmStyle();
 
   // ★ 回到home时，如果离开太久，宠物会抱怨
   if(name === "home" && petState._leftHomeAt){
