@@ -1989,7 +1989,11 @@ function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 function bodyRadius(){
   const bt = BODY_TYPES[petState.bodyType] || BODY_TYPES["圆胖型"];
-  return Math.min(W,H) * 0.16 * (bt.bodyR / 42);
+  let r = Math.min(W,H) * 0.16 * (bt.bodyR / 42);
+  // ★ 成长阶段体型：婴儿期更小，幼年期稍小，成年期正常
+  if(petState.stage === "婴儿") r *= 0.72;
+  else if(petState.stage === "幼年") r *= 0.88;
+  return r;
 }
 function headRadius(){ return bodyRadius() * (BODY_TYPES[petState.bodyType]?.headMul || 0.7); }
 function roundRectPath(c,x,y,w,h,r){
@@ -7193,7 +7197,21 @@ function checkAdultStage(){
   const daysOld = (Date.now() - petState.birthTime) / 86400000;
   const s = petState.state;
 
-  // 触发条件：3 游戏天，或亲密度≥50 且互动次数≥10（降低门槛，让玩家更快看到成长）
+  // ★ 第一阶段：婴儿 → 幼年（1游戏天 或 互动5次）
+  if(petState.stage === "婴儿"){
+    const canGrowToChild = daysOld >= 1 || (petState._interactCount || 0) >= 5;
+    if(!canGrowToChild) return;
+    petState.stage = "幼年";
+    setTimeout(()=>{
+      if(currentPage === "home"){
+        showBubbleFor("home", pick(["我长大了一点点！","嘿嘿，我不是小宝宝了~","（蹦蹦跳跳）我可以自己走啦！"]), 4000);
+      }
+    }, 800);
+    saveState();
+    return;
+  }
+
+  // ★ 第二阶段：幼年 → 成年（3游戏天，或亲密度≥50 且互动次数≥10）
   const canGrow = daysOld >= 3 || (s.亲密度 >= 50 && (petState._interactCount || 0) >= 10);
   if(!canGrow) return;
 
@@ -7568,12 +7586,13 @@ function initNewPet(){
   petState.bodyType = pick(ALL_BODY_TYPES);
   petState.selfCall = MASK_SELF_CALL[petState.mask];
   petState.mood = "happy";
-  petState.stage = "幼年";
+  petState.stage = "婴儿";
   petState.traits = {
     脾气:randInt(20,80), 粘人:randInt(20,90),
     胆量:randInt(20,80), 好奇:randInt(30,90), 记仇:randInt(10,70)
   };
-  petState.state = { 饱腹:80, 清洁:70, 体力:90, 心情:85, 亲密度:60, 信任度:70 };
+  // ★ 初始值调低：刚出生的宠物对你很陌生，需要慢慢培养感情
+  petState.state = { 饱腹:70, 清洁:80, 体力:95, 心情:45, 亲密度:15, 信任度:10 };
   petState.shadow = 0;
   petState.discipline = { 服从值:0, 恐惧值:0, 记仇值:0, 黑化值:0, 天使值:50, count:0, lastTime:0, darkMode:false, opCounts:{} };
   petState.hiddenStates = { 假顺从:false, 伺机报复:false, 抑郁:false, 绝食:false, 报复倒计时:0, 最后报复时间:0 };
