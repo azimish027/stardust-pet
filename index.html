@@ -10353,7 +10353,7 @@ function drawBathScene(c,t){
   }
   c.restore();
 
-  // 花洒（步骤2和4时高亮）
+  // 花洒（步骤2和4时高亮，放大尺寸更明显）
   const sx = W * bathState.showerX;
   const sy = H * bathState.showerY;
   const showerActive = bathState.step === 2 || bathState.step === 4;
@@ -10361,31 +10361,43 @@ function drawBathScene(c,t){
   if(showerActive){
     // 发光效果
     c.shadowColor = "#7BC8FF";
-    c.shadowBlur = 20;
+    c.shadowBlur = 25;
   }
+  // 花洒手柄（放大）
   c.strokeStyle = showerActive ? "#5AB0F0" : "#A8D8FF";
-  c.lineWidth = 6;
+  c.lineWidth = 10;
   c.lineCap = "round";
   c.beginPath();
   c.moveTo(sx, sy);
-  c.lineTo(sx+20, sy+30);
+  c.lineTo(sx+35, sy+45);
   c.stroke();
+  // 花洒喷头（放大）
   c.fillStyle = showerActive ? "#5AB0F0" : "#A8D8FF";
   c.beginPath();
-  c.arc(sx+20, sy+35, 16, 0, TAU);
+  c.arc(sx+35, sy+55, 28, 0, TAU);
   c.fill();
+  // 花洒喷头内圈
   c.fillStyle = "#E8F4FF";
   c.beginPath();
-  c.arc(sx+20, sy+35, 9, 0, TAU);
+  c.arc(sx+35, sy+55, 16, 0, TAU);
   c.fill();
+  // 花洒喷水孔
+  c.fillStyle = showerActive ? "#5AB0F0" : "#A8D8FF";
+  for(let i=0;i<5;i++){
+    const hx = sx+35 + Math.cos(i*1.2)*10;
+    const hy = sy+55 + Math.sin(i*1.2)*10;
+    c.beginPath();
+    c.arc(hx, hy, 2.5, 0, TAU);
+    c.fill();
+  }
   c.restore();
   // 花洒提示文字
   if(showerActive){
     c.save();
-    c.fillStyle = "rgba(90,176,240,0.9)";
-    c.font = "12px sans-serif";
+    c.fillStyle = "rgba(90,176,240,0.95)";
+    c.font = "bold 14px sans-serif";
     c.textAlign = "center";
-    c.fillText("← 拖动我", sx+20, sy-10);
+    c.fillText("← 拖动花洒到宠物身上", sx+35, sy-15);
     c.restore();
   }
 
@@ -13302,12 +13314,12 @@ function handleBathPointerDown(p, canvas){
   const tx = cw * bathState.towelX;
   const ty = ch * bathState.towelY;
 
-  // 增大点击区域到半径55，更容易点中
-  if(Math.hypot(p.x - (sx+20), p.y - (sy+35)) < 55){
+  // 增大点击区域到半径70，更容易点中（匹配放大后的花洒位置）
+  if(Math.hypot(p.x - (sx+35), p.y - (sy+55)) < 70){
     bathState.draggingShower = true;
     return;
   }
-  if(Math.hypot(p.x - tx, p.y - ty) < 55){
+  if(Math.hypot(p.x - tx, p.y - ty) < 70){
     bathState.draggingTowel = true;
     return;
   }
