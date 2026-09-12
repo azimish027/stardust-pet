@@ -13,7 +13,8 @@
     margin: 0; padding: 0; height: 100%; overflow: hidden;
     background: #1a1035;
     font-family: "ZCOOL KuaiLe", "站酷快乐体", "幼圆", "华文圆体", "M PLUS Rounded 1c", "PingFang SC", "Microsoft YaHei", sans-serif;
-    color: #fff;
+    color: #5D4037;  /* ★ 默认深棕色，淡色背景上清晰可见 */
+    font-size: 16px;  /* ★ 增大基础字号 */
     user-select: none;
   }
   /* 电脑上居中显示，手机上占满屏幕 */
@@ -320,18 +321,19 @@
     padding: 12px 14px; border-radius: 14px;
     background: linear-gradient(135deg, #FFE4F0, #F0E4FF);
     border: 2px solid rgba(255,180,220,0.5);
-    color: #7A6A9A; font-size: 14px; font-weight: 500; cursor: pointer;
+    color: #5D4A7A; font-size: 15px; font-weight: 600; cursor: pointer;  /* ★ 深紫色文字，增大字号 */
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s;
     box-shadow: 0 2px 6px rgba(180,140,200,0.2);
+    display: flex; align-items: center; justify-content: center;  /* ★ 文字居中对齐 */
   }
   .modal-btn:hover { background: linear-gradient(135deg, #FFD6E8, #E8D6FF); transform: translateY(-2px) scale(1.02); }
   .modal-btn:active { transform: scale(0.92); transition: transform 0.1s; }
   .modal-btn.primary {
-    background: linear-gradient(135deg, #FFB6D9, #FFD6E8); color: #fff; font-weight: 600;
+    background: linear-gradient(135deg, #FFB6D9, #FFD6E8); color: #8B3A62; font-weight: 700;  /* ★ 深粉色文字，不是白色 */
     border-color: rgba(255,150,200,0.6);
   }
   .modal-btn.primary:hover { background: linear-gradient(135deg, #FFA0CC, #FFC8E0); }
-  .modal-btn.danger { background: linear-gradient(135deg, #FFD0D8, #FFE0E8); border-color: rgba(255,150,170,0.6); color: #D06080; }
+  .modal-btn.danger { background: linear-gradient(135deg, #FFD0D8, #FFE0E8); border-color: rgba(255,150,170,0.6); color: #B04050; font-weight: 600; }
   .modal-btn.danger:hover { background: linear-gradient(135deg, #FFC0D0, #FFD0E0); }
 
   /* ─── 食物面板（网格） ─── */
@@ -3645,6 +3647,23 @@ function autoTalkLine(){
   const mood = petState.mood;
   const dCount = petState.discipline.count || 0;
   const s = petState.state;
+
+  // ★ 婴儿期：无面具，只会咿呀学语
+  if(petState.stage === "婴儿"){
+    const babySounds = ["呜……","啊？","咿呀","呀！","嗯~","唔","哦？","嗷！","呜哇——","啊呜"];
+    const babyWords = ["饿……","抱……","要……","来？","走？","怕……","困……"];
+    // 70%咿呀，30%单字
+    if(Math.random() < 0.7){
+      return pick(babySounds);
+    } else {
+      // 根据状态选单字
+      if(s.饱腹 < 40) return "饿……";
+      if(s.体力 < 40) return "困……";
+      if(mood === "fear") return "怕……";
+      if(mood === "happy") return "呀！";
+      return pick(babyWords);
+    }
+  }
 
   // 被管教得多 → 害怕/讨好
   if(dCount >= 3 && Math.random() < 0.55){
@@ -8085,9 +8104,9 @@ function checkAdultStage(){
   const daysOld = (Date.now() - petState.birthTime) / 86400000;
   const s = petState.state;
 
-  // ★ 第一阶段：婴儿 → 幼年（1游戏天 或 互动8次，更容易触发）
+  // ★ 第一阶段：婴儿 → 幼年（3真实天 或 互动8次）
   if(petState.stage === "婴儿"){
-    const canGrowToChild = daysOld >= 1 || (petState._interactCount || 0) >= 8;
+    const canGrowToChild = daysOld >= 3 || (petState._interactCount || 0) >= 8;
     if(!canGrowToChild) return;
     petState.stage = "幼年";
     triggerGrowthTransition("幼年");
@@ -8095,8 +8114,9 @@ function checkAdultStage(){
     return;
   }
 
-  // ★ 第二阶段：幼年 → 成年（3游戏天，或亲密度≥50 且互动次数≥20）
-  const canGrow = daysOld >= 3 || (s.亲密度 >= 50 && (petState._interactCount || 0) >= 20);
+  // ★ 第二阶段：幼年 → 成年（30真实天，或亲密度≥50 且互动次数≥20）
+  // 幼年期拉长（3-30天），中间第15天左右宠物会说"慢慢长大了"，但不实际切换阶段
+  const canGrow = daysOld >= 30 || (s.亲密度 >= 50 && (petState._interactCount || 0) >= 20);
   if(!canGrow) return;
 
   // 阶段过渡
@@ -8388,6 +8408,15 @@ function loadState(){
         askedName: false, askedBirthday: false, askedHobby: false, lastAskTime: 0
       };
     }
+    // ★ 婴儿期教学进度兼容
+    if(!petState.teaching){
+      petState.teaching = {
+        eat: { count: 0, learned: false },
+        sleep: { count: 0, learned: false },
+        toilet: { count: 0, learned: false },
+        noBite: { count: 0, learned: false }
+      };
+    }
     // AI融合模式兼容
     if(petState.recentEvents === undefined) petState.recentEvents = [];
     if(petState.aiFusionMode === undefined) petState.aiFusionMode = true;
@@ -8446,6 +8475,81 @@ function loadState(){
   }catch(e){ return false; }
 }
 
+/* ═══════════════ 婴儿期教学系统 ═══════════════ */
+function teachSkill(skillName){
+  if(petState.stage !== "婴儿") return;
+  if(!petState.teaching) return;
+  const skill = petState.teaching[skillName];
+  if(!skill || skill.learned) return;
+
+  // 被打骂后教学效率降低（需要更多次）
+  let needed = 3;
+  if((petState.discipline.恐惧值 || 0) > 50) needed = 4;
+  if((petState.discipline.恐惧值 || 0) > 80) needed = 5;
+
+  skill.count++;
+
+  if(skill.count >= needed){
+    skill.learned = true;
+    // 学会了！宠物会说"我会了！"（婴儿期用咿呀表达）
+    setTimeout(()=>{
+      showBubbleFor("home", "呀！" + (skillName === "eat" ? "吃……" : skillName === "sleep" ? "睡……" : skillName === "toilet" ? "嘘……" : "嗯！"), 4000, "high");
+      petState.state.亲密度 = clamp(petState.state.亲密度 + 5, 0, 100);
+      petState.state.心情 = clamp(petState.state.心情 + 10, 0, 100);
+      sfxHappy();
+    }, 300);
+  } else {
+    // 还在学，给一点反馈
+    if(Math.random() < 0.5){
+      setTimeout(()=>{
+        showBubbleFor("home", pick(["啊？","咿呀","嗯~","哦？"]), 2000, "high");
+      }, 200);
+    }
+  }
+  saveState();
+}
+
+/* ═══════════════ 称呼系统（动态称呼，游戏内置台词遵守） ═══════════════ */
+const ADDRESS_TABLE = {
+  "公主病": { low:["仆人","那个谁"], mid:["你"], high:["……你"] },
+  "本大人": { low:["下属","仆人"], mid:["你"], high:["本大人的人"] },
+  "小可爱": { low:["主人","姐姐"], mid:["妈妈","爸爸"], high:["妈妈～","爸爸～"] },
+  "病娇":   { low:["你"], mid:["主人"], high:["亲爱的","我的"] },
+  "傲娇":   { low:["笨蛋","那个"], mid:["你"], high:["……你啦"] },
+  "冷淡":   { low:["你"], mid:["你"], high:["你"] },
+  "疯批":   { low:["老大","喂"], mid:["嘿"], high:["老大～"] },
+  "学者":   { low:["阁下","先生"], mid:["您"], high:["阁下"] },
+  "戏精":   { low:["主人大人"], mid:["陛下"], high:["亲爱的陛下"] },
+  "憨憨":   { low:["主人","那个"], mid:["主人"], high:["主人～"] },
+  "顺从型": { low:["主人"], mid:["主人"], high:["主人"] },
+  "扭曲型": { low:["主人～"], mid:["主人～"], high:["主人～您说得对～"] }
+};
+
+function getPlayerAddress(){
+  // 婴儿期不会叫称呼，只会咿呀
+  if(petState.stage === "婴儿") return "";
+  // 如果玩家教过称呼，优先用玩家教的
+  if(petState.playerInfo && petState.playerInfo.taughtAddress){
+    return petState.playerInfo.taughtAddress;
+  }
+  const mask = petState.mask;
+  const intimacy = petState.state.亲密度 || 50;
+  const table = ADDRESS_TABLE[mask] || ADDRESS_TABLE["小可爱"];
+  let level = "mid";
+  if(intimacy < 40) level = "low";
+  else if(intimacy >= 70) level = "high";
+  // 生气时临时用低亲密称呼
+  if(petState.mood === "angry" && level !== "low") level = "low";
+  return pick(table[level]);
+}
+
+// 在台词中替换 {称呼} 为动态称呼
+function applyAddress(text){
+  if(!text) return text;
+  const addr = getPlayerAddress();
+  return text.replace(/\{称呼\}/g, addr).replace(/\{player\}/g, addr);
+}
+
 function initNewPet(){
   petState.mask = pick(ALL_MASKS);
   petState.bodyType = pick(ALL_BODY_TYPES);
@@ -8495,6 +8599,13 @@ function initNewPet(){
     askedBirthday: false, // 是否问过生日
     askedHobby: false,    // 是否问过爱好
     lastAskTime: 0        // 上次问问题的时间
+  };
+  // ★ 婴儿期教学进度：4项技能，每项3次学会
+  petState.teaching = {
+    eat: { count: 0, learned: false },      // 吃：拖食物到嘴边3次
+    sleep: { count: 0, learned: false },    // 睡：拖到垫子3次
+    toilet: { count: 0, learned: false },   // 上厕所：拖到尿垫3次
+    noBite: { count: 0, learned: false }    // 不咬人：被咬后训斥3次
   };
   // ★ 全新宠物必须彻底清空旧宠残留（不然"重新领蛋还是上一只"）
   petState.marks = [];
@@ -10303,6 +10414,9 @@ function applyFood(food){
   addAction("主人喂了你" + food.name);
   const s = petState.state;
   const bt = BODY_TYPES[petState.bodyType] || BODY_TYPES["圆胖型"];
+
+  // ★ 婴儿期教学：喂食时教"吃"
+  if(petState.stage === "婴儿") teachSkill("eat");
 
   // 不明物体
   if(food.mystery === "A"){
