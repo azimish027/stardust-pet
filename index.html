@@ -10163,8 +10163,77 @@ function drawPlayScene(c,t){
   c.font = "13px \"ZCOOL KuaiLe\", \"PingFang SC\", sans-serif";
   c.textAlign = "center";
   c.textBaseline = "top";
-  c.fillText("拖着玩具逗它 · 点击空白处让它跑过去", W/2, 22);
+  let hint = "拖着玩具逗它 · 点击空白处让它跑过去";
+  if(playState.activeGame === "feather") hint = "🪶 拖动逗猫棒，让它追着跑！";
+  else if(playState.activeGame === "ball") hint = "🎾 点击地面扔球，它会跑去接！";
+  else if(playState.activeGame === "star") hint = "⭐ 点击天空，星星会掉下来，让它接住！";
+  else if(playState.activeGame === "hide") hint = "🙈 它躲起来了，点击找到它！";
+  c.fillText(hint, W/2, 22);
   c.restore();
+
+  // ★ 接星星：画掉落的星星
+  if(playState.stars && playState.stars.length){
+    playState.stars.forEach((star, i)=>{
+      if(!star.caught){
+        star.y += 3; // 星星下落速度
+        if(star.y >= star.targetY){
+          // 星星落地，检查宠物是否在附近
+          const br = bodyRadius();
+          if(Math.hypot(star.x - pet.x, star.y - pet.y) < br * 1.5){
+            // 接住了！
+            star.caught = true;
+            petState.state.心情 = clamp(petState.state.心情 + 8, 0, 100);
+            petState.state.体力 = clamp(petState.state.体力 - 2, 0, 100);
+            petState.state.亲密度 = clamp(petState.state.亲密度 + 3, 0, 100);
+            showBubbleFor("play", pick(["接到了！","好亮的星星！","给你~","嘿嘿~"]));
+            triggerBodyReaction("happy", 1500, 0.8);
+            sfxHappy();
+            addClickEffect(star.x, star.y, "#FFE9A8");
+            recordMemory("玩耍", "接星星");
+          } else {
+            star.caught = true; // 没接住，消失
+          }
+        }
+        if(!star.caught){
+          // 画星星
+          c.save();
+          c.fillStyle = "#FFE9A8";
+          c.shadowColor = "#FFE9A8";
+          c.shadowBlur = 15;
+          c.font = "24px sans-serif";
+          c.textAlign = "center";
+          c.textBaseline = "middle";
+          c.fillText("⭐", star.x, star.y);
+          c.restore();
+        }
+      }
+    });
+    // 清理已接住的星星
+    playState.stars = playState.stars.filter(s=>!s.caught);
+  }
+
+  // ★ 逗猫棒：宠物追着玩具跑
+  if(playState.chasingToy && playState.toys.length){
+    const toy = playState.toys.find(t=>t.dragging);
+    if(toy){
+      const tx = toy.x * W, ty = toy.y * H;
+      petState._targetX = tx;
+      petState._targetY = ty;
+      // 追上了
+      const br = bodyRadius();
+      if(Math.hypot(tx - pet.x, ty - pet.y) < br * 1.2){
+        playState.chasingToy = false;
+        petState.state.心情 = clamp(petState.state.心情 + 6, 0, 100);
+        petState.state.体力 = clamp(petState.state.体力 - 2, 0, 100);
+        petState.state.亲密度 = clamp(petState.state.亲密度 + 2, 0, 100);
+        showBubbleFor("play", pick(["抓到了！","好有趣！","再来再来！","（咬住逗猫棒）嘿嘿~"]));
+        triggerBodyReaction("happy", 1500, 0.8);
+        sfxHappy();
+        addClickEffect(pet.x, pet.y - bodyRadius(), "#FFE9A8");
+        recordMemory("玩耍", "逗猫棒");
+      }
+    }
+  }
 }
 
 /* ─── 玩耍页玩具拖拽交互 ─── */
@@ -10181,6 +10250,11 @@ function handlePlayPointerDown(p, canvas){
       toy.dragging = true;
       toy.offX = p.x - tx;
       toy.offY = p.y - ty;
+      // ★ 开始玩逗猫棒：宠物会追着玩具跑
+      if(playState.activeGame === "feather"){
+        playState.chasingToy = true;
+        showBubbleFor("play", pick(["哇！好有趣！","我要抓到你！","嘿嘿~"]));
+      }
       return true;
     }
   }
@@ -10192,6 +10266,31 @@ function handlePlayPointerDown(p, canvas){
     playState.petTargetTime = Date.now();
     if(Math.random() < 0.5){
       showBubbleFor("play", pick(["来啦！","等等我~","我来了！"]));
+    }
+    // ★ 扔球玩法：点击位置扔球，宠物跑去接
+    if(playState.activeGame === "ball"){
+      playState.ballThrown = true;
+      playState.ballTarget = { x: p.x, y: p.y };
+      setTimeout(()=>{
+        if(playState.ballThrown && currentPage === "play"){
+          // 宠物接到球了
+          playState.ballThrown = false;
+          petState.state.心情 = clamp(petState.state.心情 + 5, 0, 100);
+          petState.state.体力 = clamp(petState.state.体力 - 3, 0, 100);
+          petState.state.亲密度 = clamp(petState.state.亲密度 + 2, 0, 100);
+          showBubbleFor("play", pick(["接到了！","给你~","嘿嘿，我厉害吧？","（叼着球跑回来）"]));
+          triggerBodyReaction("happy", 1500, 0.8);
+          sfxHappy();
+          addClickEffect(pet.x, pet.y - bodyRadius(), "#FFE9A8");
+          recordMemory("玩耍", "扔球接球");
+          saveState();
+        }
+      }, 1500);
+    }
+    // ★ 接星星玩法：点击位置生成星星，宠物跑去接
+    if(playState.activeGame === "star"){
+      playState.stars = playState.stars || [];
+      playState.stars.push({ x: p.x, y: 0, targetY: p.y, caught: false });
     }
     return true;
   }
@@ -10582,52 +10681,64 @@ function drawBathScene(c,t){
   }
   c.restore();
 
-  // 花洒（步骤2和4时高亮，放大尺寸更明显）
+  // 花洒（全程显示，步骤2和4时高亮，放大尺寸更明显）
   const sx = W * bathState.showerX;
   const sy = H * bathState.showerY;
   const showerActive = bathState.step === 2 || bathState.step === 4;
-  c.save();
-  if(showerActive){
-    // 发光效果
-    c.shadowColor = "#7BC8FF";
-    c.shadowBlur = 25;
-  }
-  // 花洒手柄（放大）
-  c.strokeStyle = showerActive ? "#5AB0F0" : "#A8D8FF";
-  c.lineWidth = 10;
-  c.lineCap = "round";
-  c.beginPath();
-  c.moveTo(sx, sy);
-  c.lineTo(sx+35, sy+45);
-  c.stroke();
-  // 花洒喷头（放大）
-  c.fillStyle = showerActive ? "#5AB0F0" : "#A8D8FF";
-  c.beginPath();
-  c.arc(sx+35, sy+55, 28, 0, TAU);
-  c.fill();
-  // 花洒喷头内圈
-  c.fillStyle = "#E8F4FF";
-  c.beginPath();
-  c.arc(sx+35, sy+55, 16, 0, TAU);
-  c.fill();
-  // 花洒喷水孔
-  c.fillStyle = showerActive ? "#5AB0F0" : "#A8D8FF";
-  for(let i=0;i<5;i++){
-    const hx = sx+35 + Math.cos(i*1.2)*10;
-    const hy = sy+55 + Math.sin(i*1.2)*10;
-    c.beginPath();
-    c.arc(hx, hy, 2.5, 0, TAU);
-    c.fill();
-  }
-  c.restore();
-  // 花洒提示文字
-  if(showerActive){
+  const showerVisible = bathState.step >= 1; // 步骤1以后都显示
+  if(showerVisible){
     c.save();
-    c.fillStyle = "rgba(90,176,240,0.95)";
-    c.font = "bold 14px sans-serif";
-    c.textAlign = "center";
-    c.fillText("← 拖动花洒到宠物身上", sx+35, sy-15);
+    if(showerActive){
+      // 发光效果
+      c.shadowColor = "#7BC8FF";
+      c.shadowBlur = 25;
+    }
+    // 花洒手柄（放大）
+    c.strokeStyle = showerActive ? "#5AB0F0" : "#A8D8FF";
+    c.lineWidth = 10;
+    c.lineCap = "round";
+    c.beginPath();
+    c.moveTo(sx, sy);
+    c.lineTo(sx+35, sy+45);
+    c.stroke();
+    // 花洒喷头（放大）
+    c.fillStyle = showerActive ? "#5AB0F0" : "#A8D8FF";
+    c.beginPath();
+    c.arc(sx+35, sy+55, 28, 0, TAU);
+    c.fill();
+    // 花洒喷头内圈
+    c.fillStyle = "#E8F4FF";
+    c.beginPath();
+    c.arc(sx+35, sy+55, 16, 0, TAU);
+    c.fill();
+    // 花洒喷水孔
+    c.fillStyle = showerActive ? "#5AB0F0" : "#A8D8FF";
+    for(let i=0;i<5;i++){
+      const hx = sx+35 + Math.cos(i*1.2)*10;
+      const hy = sy+55 + Math.sin(i*1.2)*10;
+      c.beginPath();
+      c.arc(hx, hy, 2.5, 0, TAU);
+      c.fill();
+    }
     c.restore();
+    // 花洒提示文字
+    if(showerActive){
+      c.save();
+      c.fillStyle = "rgba(90,176,240,0.95)";
+      c.font = "bold 14px sans-serif";
+      c.textAlign = "center";
+      c.fillText("← 拖动花洒到宠物身上", sx+35, sy-15);
+      c.restore();
+    }
+    // 非活跃时也显示提示
+    if(!showerActive && bathState.step === 1){
+      c.save();
+      c.fillStyle = "rgba(154,138,176,0.8)";
+      c.font = "12px sans-serif";
+      c.textAlign = "center";
+      c.fillText("（下一步会用到花洒）", sx+35, sy-15);
+      c.restore();
+    }
   }
 
   // 毛巾（步骤5时高亮）
