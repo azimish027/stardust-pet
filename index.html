@@ -4508,6 +4508,99 @@ function sfxCageLock(){
   setTimeout(()=>playNote(200, 0.1, "square", sfxGain, 0.15), 150);
 }
 
+/* ═══════════════ 环境音效 ═══════════════ */
+let ambientSound = { type: null, node: null, gain: null };
+
+function stopAmbient(){
+  if(ambientSound.node){
+    try { ambientSound.node.stop(); } catch(e){}
+    ambientSound.node = null;
+  }
+  if(ambientSound.gain){
+    try { ambientSound.gain.disconnect(); } catch(e){}
+    ambientSound.gain = null;
+  }
+  ambientSound.type = null;
+}
+
+function startAmbient(type){
+  if(!audioCtx || !audioEnabled) return;
+  if(ambientSound.type === type) return;  // 已经在播放同一种
+  stopAmbient();
+  ambientSound.type = type;
+
+  if(type === "rain"){
+    // 雨声：持续白噪声+低通滤波
+    const noise = audioCtx.createBufferSource();
+    const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<data.length;i++) data[i] = Math.random()*2-1;
+    noise.buffer = buffer;
+    noise.loop = true;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 3000;
+    const g = audioCtx.createGain();
+    g.gain.value = 0;
+    g.gain.linearRampToValueAtTime(0.06, audioCtx.currentTime + 1);
+    noise.connect(filter); filter.connect(g); g.connect(sfxGain);
+    noise.start();
+    ambientSound.node = noise;
+    ambientSound.gain = g;
+  } else if(type === "night"){
+    // 夜晚虫鸣：周期性高频短促音
+    const playCricket = ()=>{
+      if(ambientSound.type !== "night") return;
+      playNote(4000 + Math.random()*500, 0.05, "sine", sfxGain, 0.03);
+      setTimeout(()=>{
+        if(ambientSound.type === "night") playNote(4200 + Math.random()*300, 0.04, "sine", sfxGain, 0.025);
+      }, 80);
+      setTimeout(playCricket, 2000 + Math.random()*3000);
+    };
+    setTimeout(playCricket, 1000);
+  } else if(type === "wind"){
+    // 风声：白噪声+带通滤波+缓慢调制
+    const noise = audioCtx.createBufferSource();
+    const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<data.length;i++) data[i] = Math.random()*2-1;
+    noise.buffer = buffer;
+    noise.loop = true;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = 500;
+    const lfo = audioCtx.createOscillator();
+    lfo.frequency.value = 0.2;
+    const lfoGain = audioCtx.createGain();
+    lfoGain.gain.value = 200;
+    lfo.connect(lfoGain); lfoGain.connect(filter.frequency);
+    const g = audioCtx.createGain();
+    g.gain.value = 0;
+    g.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime + 1);
+    noise.connect(filter); filter.connect(g); g.connect(sfxGain);
+    noise.start(); lfo.start();
+    ambientSound.node = noise;
+    ambientSound.gain = g;
+  }
+}
+
+/* ═══════════════ 根据天气和时间更新环境音效 ═══════════════ */
+function updateAmbientSound(){
+  if(!audioCtx || !audioEnabled) return;
+  const weather = petState.weather || "sunny";
+  const period = getCurrentPeriod();
+
+  if(weather === "rainy"){
+    startAmbient("rain");
+  } else if(period.name === "夜晚" || period.name === "深夜"){
+    startAmbient("night");
+  } else if(weather === "windy"){
+    startAmbient("wind");
+  } else {
+    stopAmbient();
+  }
+}
+
 let voiceTimer = null;
 function playVoice(text, mood){
   if(!audioCtx || !audioEnabled || !text) return;
@@ -6051,12 +6144,23 @@ function updateBgmStyle(){
   }
 
   if(newStyle !== bgmState.currentStyle || newBpm !== bgmState.bpm){
-    bgmState.currentStyle = newStyle;
-    bgmState.bpm = newBpm;
-    bgmState.melodyIndex = 0;
-    bgmState.melodyBeat = 0;
+    // ★ 交叉淡入淡出：先淡出，等音量降下来再切换风格，然后淡入
+    if(!bgmState.switching){
+      bgmState.switching = true;
+      bgmState.targetGain = 0;  // 先淡出
+      setTimeout(()=>{
+        bgmState.currentStyle = newStyle;
+        bgmState.bpm = newBpm;
+        bgmState.melodyIndex = 0;
+        bgmState.melodyBeat = 0;
+        bgmState.currentChord = 0;
+        bgmState.targetGain = newGain;  // 再淡入
+        setTimeout(()=>{ bgmState.switching = false; }, 1000);
+      }, 800);  // 800ms淡出时间
+    }
+  } else {
+    bgmState.targetGain = newGain;
   }
-  bgmState.targetGain = newGain;
 }
 
 function startBgm(){
@@ -8892,6 +8996,13 @@ function showBubbleFor(pageKey, text, duration, priority){
   // 语音模拟：宠物说话时播放电子哔哔声
   playVoice(text, petState.mood);
 
+  // ★ 宠物说话时BGM音量降20%（侧链压缩，突出语音）
+  if(bgmGain && audioCtx){
+    const targetVol = (settings.bgmVolume || 0.4) * 0.4 * 0.8;
+    bgmGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    bgmGain.gain.linearRampToValueAtTime(targetVol, audioCtx.currentTime + 0.2);
+  }
+
   let i = 0;
   b.typeTimer = setInterval(()=>{
     i++;
@@ -8905,6 +9016,12 @@ function showBubbleFor(pageKey, text, duration, priority){
   const hold = duration || (isHighPriority ? 3000 : 4000);  // 高优先级停留时间稍短，方便连续交互
   b.hideTimer = setTimeout(()=>{
     b.el.classList.remove("show");
+    // ★ 气泡消失后恢复BGM音量
+    if(bgmGain && audioCtx){
+      const targetVol = (settings.bgmVolume || 0.4) * 0.4;
+      bgmGain.gain.cancelScheduledValues(audioCtx.currentTime);
+      bgmGain.gain.linearRampToValueAtTime(targetVol, audioCtx.currentTime + 0.3);
+    }
   }, hold + text.length*100);  // 逐字时间也翻倍
 }
 
@@ -9988,6 +10105,13 @@ function showModal(opts){
   card.innerHTML = html;
   mask.classList.add("show");
 
+  // ★ 弹窗出现时BGM音量降30%（侧链压缩）
+  if(bgmGain && audioCtx){
+    const targetVol = (settings.bgmVolume || 0.4) * 0.4 * 0.7;
+    bgmGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    bgmGain.gain.linearRampToValueAtTime(targetVol, audioCtx.currentTime + 0.3);
+  }
+
   // 自动聚焦输入框
   if(opts.input){
     setTimeout(()=>{
@@ -10014,6 +10138,12 @@ function showModal(opts){
 }
 function hideModal(){
   document.getElementById("modalMask").classList.remove("show");
+  // ★ 弹窗关闭时恢复BGM音量
+  if(bgmGain && audioCtx){
+    const targetVol = (settings.bgmVolume || 0.4) * 0.4;
+    bgmGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    bgmGain.gain.linearRampToValueAtTime(targetVol, audioCtx.currentTime + 0.3);
+  }
 }
 
 function showChoice(opts){
@@ -10645,6 +10775,7 @@ function initBathMode(){
   bathState.showerX = 0.5; bathState.showerY = 0.15;  // 花洒移到顶部中央，更明显
   bathState.towelX = 0.5; bathState.towelY = 0.85;   // 毛巾移到底部中央
   renderBathControls();
+  sfxWaterStart();  // ★ 放水音效
   setTimeout(()=>showBubbleFor("bath", pick(["要洗澡了吗……","不要嘛！","……好吧。","嘿嘿，玩水~"])), 300);
 }
 
@@ -14672,6 +14803,7 @@ function loop(now){
   updateDragTrail(dt);
   updateState(dt);
   updateWeather();  // 天气系统
+  updateAmbientSound();  // ★ 环境音效（根据天气和时间自动更新）
   if(!dragging) updateIdleAction(now);
   updateAutoAct(now);
   petState.mood = currentMood(now);
