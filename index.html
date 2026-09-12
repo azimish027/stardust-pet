@@ -12310,9 +12310,9 @@ function triggerBreeding(){
 function checkPartnerEvent(){
   if(petState.partner) return;
   if(petState.stage !== "成年") return;
-  if(petState.state.亲密度 < 60) return;
-  // 每天有5%概率触发
-  if(Math.random() < 0.001){
+  if(petState.state.亲密度 < 40) return; // 降低亲密度要求，从60降到40
+  // 每天有5%概率触发（从0.1%提高到5%）
+  if(Math.random() < 0.05){
     triggerPartnerEvent();
   }
 }
@@ -12340,13 +12340,13 @@ function multiPetInteraction(){
 
   // 随机选择互动行为
   const r = Math.random();
-  if(r < 0.2 && rel.友好 > 50){
+  if(r < 0.15 && rel.友好 > 50){
     // 一起讨好玩家
     showBubbleFor("home", "（" + p.name + "和" + petState.name + "一起凑过来）");
     petState.state.心情 = clamp(petState.state.心情 + 3, 0, 100);
     p.playerAffinity = clamp(p.playerAffinity + 2, 0, 100);
     recordMemory("和伴侣一起讨好");
-  } else if(r < 0.35 && rel.争宠 > 40){
+  } else if(r < 0.25 && rel.争宠 > 40){
     // 争宠
     if(Math.random() < 0.5){
       showBubbleFor("home", "（" + petState.name + "把" + p.name + "挤开了）");
@@ -12359,12 +12359,12 @@ function multiPetInteraction(){
       rel.嫉妒 = clamp(rel.嫉妒 + 5, 0, 100);
       recordMemory("被伴侣争宠");
     }
-  } else if(r < 0.5 && rel.嫉妒 > 50){
+  } else if(r < 0.35 && rel.嫉妒 > 50){
     // 嫉妒行为
     showBubbleFor("home", "（" + petState.name + "瞪了" + p.name + "一眼）");
     petState.state.心情 = clamp(petState.state.心情 - 2, 0, 100);
     recordMemory("嫉妒伴侣");
-  } else if(r < 0.6 && rel.联盟 > 50){
+  } else if(r < 0.45 && rel.联盟 > 50){
     // 联合行为
     if(Math.random() < 0.5){
       // 一起破坏
@@ -12377,11 +12377,40 @@ function multiPetInteraction(){
       petState.state.亲密度 = clamp(petState.state.亲密度 + 2, 0, 100);
       recordMemory("和伴侣一起讨好");
     }
-  } else if(r < 0.7 && rel.敌对 > 40){
+  } else if(r < 0.55 && rel.敌对 > 40){
     // 敌对行为
     showBubbleFor("home", "（" + petState.name + "和" + p.name + "吵架了）");
     petState.state.心情 = clamp(petState.state.心情 - 5, 0, 100);
     recordMemory("和伴侣吵架");
+  } else if(r < 0.7 && rel.友好 > 40){
+    // ★ 新增：一起玩耍
+    showBubbleFor("home", "（" + petState.name + "和" + p.name + "在追逐打闹）");
+    petState.state.心情 = clamp(petState.state.心情 + 5, 0, 100);
+    petState.state.体力 = clamp(petState.state.体力 - 3, 0, 100);
+    rel.友好 = clamp(rel.友好 + 2, 0, 100);
+    recordMemory("和伴侣一起玩耍");
+  } else if(r < 0.8 && rel.爱慕 > 50){
+    // ★ 新增：互相舔毛/亲密行为
+    showBubbleFor("home", "（" + petState.name + "给" + p.name + "舔毛）");
+    petState.state.心情 = clamp(petState.state.心情 + 4, 0, 100);
+    rel.爱慕 = clamp(rel.爱慕 + 3, 0, 100);
+    rel.友好 = clamp(rel.友好 + 2, 0, 100);
+    recordMemory("和伴侣亲密");
+  } else if(r < 0.9 && rel.友好 > 60){
+    // ★ 新增：分享食物
+    if(petState.bowlFood && petState.bowlFood.length > 0){
+      const shared = petState.bowlFood.shift();
+      showBubbleFor("home", "（" + petState.name + "把" + shared.name + "分给了" + p.name + "）");
+      p.playerAffinity = clamp(p.playerAffinity + 5, 0, 100);
+      rel.友好 = clamp(rel.友好 + 5, 0, 100);
+      recordMemory("分享食物给伴侣");
+    }
+  } else {
+    // ★ 新增：一起睡觉
+    showBubbleFor("home", "（" + petState.name + "和" + p.name + "依偎在一起睡着了）");
+    petState.state.体力 = clamp(petState.state.体力 + 5, 0, 100);
+    petState.state.心情 = clamp(petState.state.心情 + 2, 0, 100);
+    recordMemory("和伴侣一起睡觉");
   }
   saveState();
 }
