@@ -9064,6 +9064,9 @@ function showBubbleFor(pageKey, text, duration, priority){
   const b = bubbles[pageKey];
   if(!b || !b.el) return;
 
+  // ★ 动态称呼：替换台词中的{称呼}占位符
+  text = applyAddress(text);
+
   // ★ 高优先级（玩家交互回应）：跳过冷却，立即显示，可打断正在说的话
   const isHighPriority = priority === "high";
 
@@ -14552,7 +14555,7 @@ async function sendMessage(input, pageKey){
       if(parts.length > 0) playerInfoDesc = "【关于你的主人】\n" + parts.join("\n");
     }
 
-    const sysPrompt = `你是一只${petState.bodyType}的虚拟宠物，名字叫${(petState.name||"小星")}，性格是${petState.mask}，自称${petState.selfCall}。
+    let sysPrompt = `你是一只${petState.bodyType}的虚拟宠物，名字叫${(petState.name||"小星")}，性格是${petState.mask}，自称${petState.selfCall}。
 当前心情：${moodDesc}。亲密度：${Math.round(petState.state.亲密度)}/100。信任度：${Math.round(petState.state.信任度)}/100。暗影值：${Math.round(petState.shadow)}/100。
 ${actionDesc}
 ${playerInfoDesc}
@@ -14582,6 +14585,26 @@ ${getRecentEventsText(10)}
 请用符合你性格的口语化简短回复，像真实宠物一样有情绪波动，不超过30字。
 不要总是说同样的话，要根据当前状态和记忆变化。
 如果游戏内刚发生了什么事（被喂食/被打骂/做噩梦等），你的回复必须直接回应这件事。`;
+
+    // ★ 婴儿期特殊规则：无面具，只会咿呀学语
+    if(petState.stage === "婴儿"){
+      sysPrompt = `你是一只刚出生的虚拟宠物婴儿，名字叫${(petState.name||"小星")}。
+你还不会说话，只会发出咿呀的声音：呜、啊、咿、呀、嗯、唔、哦、嗷。
+偶尔能说单个字：饿、抱、要、来、走、怕、困。
+你没有性格面具，没有自称，不会说完整句子，不会有逻辑的回应。
+玩家跟你说话时，你只会模仿最后一个音节的发音，或者发出咿呀声。
+当前心情：${moodDesc}。亲密度：${Math.round(petState.state.亲密度)}/100。
+${actionDesc}
+
+【重要规则】
+1. 绝对不能说完整句子，只能咿呀或单字
+2. 绝对不能使用任何自称（本公主/本大人/人家等）
+3. 玩家说一句话后，你可以模仿最后一个字的发音，比如玩家说"你好吗"，你说"……吗？"
+4. 饿了说"饿……"，困了说"困……"，害怕说"怕……"，想要抱抱说"抱……"
+5. 开心时说"呀！""咿呀！"，难过时说"呜……""呜哇——"
+
+请只用咿呀声或单字回复，不超过5个字。`;
+    }
 
     const messages = [ { role:"system", content: sysPrompt } ];
     for(let i = 0; i < chatHistory.length - 1; i++){
