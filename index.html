@@ -4330,6 +4330,184 @@ function sfxAngry(){ playNote(800, 0.08, "square", sfxGain, 0.2); setTimeout(()=
 function sfxClick(){ playNote(800, 0.05, "sine", sfxGain, 0.1); }
 function sfxShadow(){ playNote(60, 0.3, "sawtooth", sfxGain, 0.15); setTimeout(()=>playNote(50, 0.4, "sine", sfxGain, 0.12), 150); }
 
+/* ═══════════════ 洗澡专属音效 ═══════════════ */
+function sfxWaterStart(){
+  // 放水：持续白噪声+低通滤波，缓慢起音
+  if(!audioCtx || !audioEnabled) return;
+  const noise = audioCtx.createBufferSource();
+  const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 1.5, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i=0;i<data.length;i++) data[i] = Math.random()*2-1;
+  noise.buffer = buffer;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 2000;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0, audioCtx.currentTime);
+  g.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.3);
+  g.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 1.4);
+  noise.connect(filter); filter.connect(g); g.connect(sfxGain);
+  noise.start(); noise.stop(audioCtx.currentTime + 1.5);
+}
+function sfxWaterDrop(){
+  // 打湿：短促高频噪声脉冲，模拟水珠
+  playNote(3000, 0.05, "sine", sfxGain, 0.1);
+  setTimeout(()=>playNote(2500, 0.04, "sine", sfxGain, 0.08), 50);
+}
+function sfxWash(){
+  // 搓洗：中频噪声+周期性调制，模拟泡沫摩擦
+  if(!audioCtx || !audioEnabled) return;
+  for(let i=0;i<3;i++){
+    setTimeout(()=>{
+      const noise = audioCtx.createBufferSource();
+      const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for(let j=0;j<data.length;j++) data[j] = Math.random()*2-1;
+      noise.buffer = buffer;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.value = 3000 + i*500;
+      const g = audioCtx.createGain();
+      g.gain.value = 0.08;
+      noise.connect(filter); filter.connect(g); g.connect(sfxGain);
+      noise.start();
+    }, i*80);
+  }
+}
+function sfxRinse(){
+  // 冲水：白噪声+高通滤波+随机水花
+  if(!audioCtx || !audioEnabled) return;
+  const noise = audioCtx.createBufferSource();
+  const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.8, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i=0;i<data.length;i++) data[i] = Math.random()*2-1;
+  noise.buffer = buffer;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = "highpass";
+  filter.frequency.value = 4000;
+  const g = audioCtx.createGain();
+  g.gain.value = 0.1;
+  noise.connect(filter); filter.connect(g); g.connect(sfxGain);
+  noise.start();
+  // 随机水花
+  for(let i=0;i<5;i++){
+    setTimeout(()=>playNote(2000+Math.random()*2000, 0.03, "sine", sfxGain, 0.08), Math.random()*600);
+  }
+}
+function sfxDry(){
+  // 擦干：低频噪声+缓慢包络，模拟布料摩擦
+  if(!audioCtx || !audioEnabled) return;
+  const noise = audioCtx.createBufferSource();
+  const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.5, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i=0;i<data.length;i++) data[i] = Math.random()*2-1;
+  noise.buffer = buffer;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 800;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  g.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+  noise.connect(filter); filter.connect(g); g.connect(sfxGain);
+  noise.start();
+}
+function sfxBlowDry(){
+  // 吹干：持续风声（噪声+带通滤波）
+  if(!audioCtx || !audioEnabled) return;
+  const noise = audioCtx.createBufferSource();
+  const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 1, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i=0;i<data.length;i++) data[i] = Math.random()*2-1;
+  noise.buffer = buffer;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.value = 1500;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0, audioCtx.currentTime);
+  g.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + 0.2);
+  g.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.9);
+  noise.connect(filter); filter.connect(g); g.connect(sfxGain);
+  noise.start();
+}
+function sfxShakeWater(){
+  // 抖水：一串短促水珠声
+  for(let i=0;i<8;i++){
+    setTimeout(()=>playNote(1500+Math.random()*1500, 0.03, "sine", sfxGain, 0.1), i*60);
+  }
+}
+
+/* ═══════════════ 暗影模式10种操作专属音效 ═══════════════ */
+function sfxStarTouch(){
+  // 星光触碰：高频铃声+短混响
+  playNote(2000, 0.3, "sine", sfxGain, 0.15);
+  setTimeout(()=>playNote(2500, 0.2, "sine", sfxGain, 0.1), 100);
+}
+function sfxShadowShock(){
+  // 暗影震荡：低频嗡鸣+频率抖动
+  playNote(80, 0.4, "sawtooth", sfxGain, 0.2);
+  setTimeout(()=>playNote(70, 0.3, "sine", sfxGain, 0.15), 100);
+}
+function sfxGravity(){
+  // 重力魔法：低频下坠音+落地闷响
+  playSlide(200, 60, 0.3, "sine", sfxGain, 0.2);
+  setTimeout(()=>playNote(50, 0.2, "sine", sfxGain, 0.3), 280);
+}
+function sfxFire(){
+  // 火焰净化：中频噪声+噼啪脉冲
+  if(!audioCtx || !audioEnabled) return;
+  for(let i=0;i<5;i++){
+    setTimeout(()=>{
+      const noise = audioCtx.createBufferSource();
+      const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.05, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for(let j=0;j<data.length;j++) data[j] = Math.random()*2-1;
+      noise.buffer = buffer;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.value = 2000 + Math.random()*1000;
+      const g = audioCtx.createGain();
+      g.gain.value = 0.1;
+      noise.connect(filter); filter.connect(g); g.connect(sfxGain);
+      noise.start();
+    }, i*80);
+  }
+}
+function sfxDeepSeal(){
+  // 深海封印：低频嗡鸣+水下混响（低通滤波）
+  playNote(100, 0.5, "sine", sfxGain, 0.15);
+  setTimeout(()=>playNote(120, 0.4, "sine", sfxGain, 0.12), 200);
+}
+function sfxStarDismantle(){
+  // 星尘拆解：玻璃碎裂（高频噪声+快速衰减）
+  if(!audioCtx || !audioEnabled) return;
+  const noise = audioCtx.createBufferSource();
+  const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.3, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i=0;i<data.length;i++) data[i] = (Math.random()*2-1) * (1 - i/data.length);
+  noise.buffer = buffer;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = "highpass";
+  filter.frequency.value = 5000;
+  const g = audioCtx.createGain();
+  g.gain.value = 0.15;
+  noise.connect(filter); filter.connect(g); g.connect(sfxGain);
+  noise.start();
+}
+function sfxWhip(){
+  // 星光教鞭：破空声（高频噪声快速下行）+击打声
+  playSlide(4000, 500, 0.1, "sawtooth", sfxGain, 0.15);
+  setTimeout(()=>playNote(150, 0.15, "sine", sfxGain, 0.25), 80);
+}
+function sfxPlushGlove(){
+  // 毛绒手套：闷击声（低通滤波脉冲）
+  playNote(120, 0.15, "sine", sfxGain, 0.25);
+}
+function sfxCageLock(){
+  // 糖果结界禁闭：铁门关闭（低频撞击）+锁链声
+  playNote(100, 0.3, "square", sfxGain, 0.2);
+  setTimeout(()=>playNote(200, 0.1, "square", sfxGain, 0.15), 150);
+}
+
 let voiceTimer = null;
 function playVoice(text, mood){
   if(!audioCtx || !audioEnabled || !text) return;
@@ -10635,6 +10813,8 @@ function updateBathProgress(dt){
     // 自动缓慢增加（如果花洒靠近宠物）
     if(bathState.showerOnPet){
       bathState.wetProgress += dt * 0.08;
+      // ★ 打湿音效：周期性播放水珠声
+      if(Math.random() < 0.05) sfxWaterDrop();
       // ★ 打湿时的身体反应：发抖、挣扎
       triggerBodyReaction("trembling", 500, 0.6);
       if(Math.random() < 0.02) triggerBodyReaction("head_shake", 300, 0.8);  // 甩头
@@ -10658,14 +10838,18 @@ function updateBathProgress(dt){
     if(bathState.scrubOnPet && Math.random() < 0.03){
       triggerBodyReaction("trembling", 400, 0.4);
       triggerBodyReaction("blushing", 500, 0.3);
+      sfxWash();  // 搓洗音效
     }
   } else if(bathState.step === 4){
     if(bathState.showerOnPet){
       bathState.rinseProgress += dt * 0.08;
+      // ★ 冲水音效：周期性播放
+      if(Math.random() < 0.04) sfxRinse();
       // ★ 冲洗时：甩水、吐舌头
       if(Math.random() < 0.02){
         triggerBodyReaction("head_shake", 400, 1);  // 甩头甩水
         triggerBodyReaction("tongue_out", 300, 0.5);
+        sfxShakeWater();  // 抖水音效
       }
       if(Math.floor(bathState.rinseProgress/33) > Math.floor((bathState.rinseProgress - dt*0.08)/33)){
         const lines = ["泡泡冲掉了~","好干净！","还有泡泡啦！","冲冲冲~"];
@@ -10684,6 +10868,8 @@ function updateBathProgress(dt){
   } else if(bathState.step === 5){
     if(bathState.towelOnPet){
       bathState.dryProgress += dt * 0.1;
+      // ★ 擦干音效：周期性播放
+      if(Math.random() < 0.04) sfxDry();
       // ★ 擦干时：舒服、脸红
       if(Math.random() < 0.03){
         triggerBodyReaction("blushing", 500, 0.5);
@@ -10705,6 +10891,8 @@ function updateBathProgress(dt){
   } else if(bathState.step === 6){
     if(bathState.blowActive){
       bathState.blowTimer += dt * 0.03;
+      // ★ 吹干音效：持续播放
+      if(Math.random() < 0.03) sfxBlowDry();
       // ★ 吹干时：头晕、吐舌头、毛乱飞
       if(Math.random() < 0.03){
         triggerBodyReaction("dizzy", 500, 0.5);
@@ -11585,10 +11773,17 @@ async function applyDarkOperation(opId){
     if(!petState.poops) petState.poops = [];
     petState.poops.push({ x: pet.x, y: pet.y + 30, since: Date.now(), type: "wet" });
   }
-  // 播放音效
-  if(opId === "shadowShock" || opId === "starWhip") sfxHit();
-  else if(opId === "flamePurify") sfxDiscipline();
-  else if(opId === "deepSeal") sfxDrink();
+  // 播放专属音效
+  if(opId === "starTouch") sfxStarTouch();
+  else if(opId === "shadowShock") sfxShadowShock();
+  else if(opId === "gravityMagic") sfxGravity();
+  else if(opId === "flamePurify") sfxFire();
+  else if(opId === "deepSeal") sfxDeepSeal();
+  else if(opId === "stardustDisassemble") sfxStarDismantle();
+  else if(opId === "starWhip") sfxWhip();
+  else if(opId === "fluffyGlove") sfxPlushGlove();
+  else if(opId === "candyBarrier") sfxCageLock();
+  else if(opId === "starve") sfxShadow();
   else sfxPetHead();
   // 设置情绪
   if(d.恐惧值 > 60) setMoodOverride("fear", 3000);
